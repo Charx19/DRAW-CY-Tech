@@ -1,1 +1,1 @@
-curses.color_content(color_number) - code pour changer de couleur
+curses.color_content(color_number) - code python pour changer de couleur
