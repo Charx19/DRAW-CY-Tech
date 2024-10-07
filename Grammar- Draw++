@@ -3,3 +3,4 @@ var x; var y; var width; var height; var radius
 circle(x,y;radius)
 rectangle(x, y, width, height)
 line(x1, y1, x2, y2)
+triangle(x1, y1, x2, y2, x3, y3)
