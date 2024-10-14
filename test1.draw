@@ -1,3 +1,5 @@
+//Fichier .draw qui permet de dessiner des formes sur l'IDE
+
 var x, y, height, width, radius;
 
 circle(x, y, radius);
