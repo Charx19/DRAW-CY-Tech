@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from instructions import *  # Importer votre répertoire d'instructions
+from compilateur import compile_draw_code
 import os
 
 class DrawPPIDE:
@@ -26,6 +28,11 @@ class DrawPPIDE:
         self.run_menu = tk.Menu(self.menu, tearoff=0)
         self.menu.add_cascade(label="Run", menu=self.run_menu)
         self.run_menu.add_command(label="Run", command=self.run_draw_code)
+
+        #menu compilation
+        self.compile_menu = tk.Menu(self.menu, tearoff=0)
+        self.menu.add_cascade(label="Compile", menu=self.compile_menu)
+        self.compile_menu.add_command(label="Compile", command=self.compile_draw_code)
 
         # Zone de dessin
         self.canvas = tk.Canvas(root, bg='white')
@@ -55,6 +62,17 @@ class DrawPPIDE:
 
         # Interpréter et exécuter les instructions Draw++
         self.interpret_draw_code(code)
+
+    def compile_draw_code(self):
+        """Compile le code Draw++ en code C."""
+        code = self.text_area.get(1.0, tk.END)
+
+        # Tente de compiler le code
+        try:
+            compile_draw_code(code)  # Appel à votre fonction de compilation
+            messagebox.showinfo("Compilation réussie", "Le code a été compilé avec succès en output.c")
+        except Exception as e:
+            messagebox.showerror("Erreur de compilation", str(e))
 
     def interpret_draw_code(self, code):
         # Chaque ligne contient une instruction Draw++
