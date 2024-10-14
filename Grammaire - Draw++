@@ -1,22 +1,25 @@
-// Déclaration des variables
-Program ::= Declarations Instructions
+// Programme principal qui inclut les commentaires
+Program ::= (Instruction | Comment)*
 
-// Règles pour déclarer plusieurs variables
-Declarations ::= "var" VariableList ";"
+// Règle pour les instructions
+Instruction ::= Declaration | Circle | Rectangle | Line | Triangle
+
+// Commentaire sur une seule ligne
+Comment ::= SingleLineComment | MultiLineComment
+
+// Commentaire sur une seule ligne : tout ce qui commence par //
+SingleLineComment ::= "//" .*
+
+// Commentaire sur plusieurs lignes : tout ce qui est entre /* et */
+MultiLineComment ::= "/*" .* "*/"
+
+// Règles pour les formes et déclarations
+Declaration ::= "var" VariableList ";"
 VariableList ::= VariableName ("," VariableName)*
-
-// Noms de variables acceptés
 VariableName ::= "x" | "y" | "width" | "height" | "radius" | "x1" | "y1" | "x2" | "y2" | "x3" | "y3"
 
-// Instructions du programme
-Instructions ::= Instruction*
-Instruction ::= Circle | Rectangle | Line | Triangle
-
-// Instructions pour dessiner les formes
 Circle ::= "circle" "(" "x" "," "y" ";" "radius" ")"
 Rectangle ::= "rectangle" "(" "x" "," "y" "," "width" "," "height" ")"
 Line ::= "line" "(" "x1" "," "y1" "," "x2" "," "y2" ")"
 Triangle ::= "triangle" "(" "x1" "," "y1" "," "x2" "," "y2" "," "x3" "," "y3" ")"
 
-// Termes pour les variables numériques
-Number ::= [0-9]+
