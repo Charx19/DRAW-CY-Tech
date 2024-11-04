@@ -34,10 +34,18 @@ class DrawPPIDE:
         self.menu.add_cascade(label="Compile", menu=self.compile_menu)
         self.compile_menu.add_command(label="Compile", command=self.compile_draw_code)
 
-        # Zone de dessin
+         #menu help readme
+        self.help_menu = tk.Menu(self.menu, tearoff=0)
+        self.help_menu.add_command(label="Get help", command=self.open_readme)
+        self.menu.add_cascade(label="Help", menu=self.help_menu)
+
+        # Drawing aera
         self.canvas = tk.Canvas(root, bg='white')
         self.canvas.pack(side="right", fill="both", expand=True)
-
+        
+    def open_readme(self):
+        readme_path="README.md"
+        os.system(f'start {readme_path}')
     def open_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Draw++ Files", "*.dpp")])
         if file_path:
