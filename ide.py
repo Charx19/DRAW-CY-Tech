@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from instructions import *  # Importer votre répertoire d'instructions
-from compilateur import compile_draw_code
+from compilateur import compile_draw_code, parse_code
 import os
 
 class DrawPPIDE:
@@ -34,7 +34,7 @@ class DrawPPIDE:
         self.menu.add_cascade(label="Compile", menu=self.compile_menu)
         self.compile_menu.add_command(label="Compile", command=self.compile_draw_code)
 
-         #menu help readme
+        #menu help readme
         self.help_menu = tk.Menu(self.menu, tearoff=0)
         self.help_menu.add_command(label="Get help", command=self.open_readme)
         self.menu.add_cascade(label="Help", menu=self.help_menu)
@@ -42,7 +42,7 @@ class DrawPPIDE:
         # Drawing aera
         self.canvas = tk.Canvas(root, bg='white')
         self.canvas.pack(side="right", fill="both", expand=True)
-        
+
     def open_readme(self):
         readme_path="README.md"
         os.system(f'start {readme_path}')
@@ -83,38 +83,30 @@ class DrawPPIDE:
             messagebox.showerror("Erreur de compilation", str(e))
 
     def interpret_draw_code(self, code):
-        # Chaque ligne contient une instruction Draw++
-        lines = code.splitlines()
+        # Analyse du code Draw++ pour obtenir les instructions
+        instructions = parse_code(code)  # Utilise le parser pour obtenir les instructions
 
         # Variables pour gérer la position et l'état de dessin
         current_x, current_y = 100, 100  # Position initiale arbitraire
-        for line in lines:
-            tokens = line.split()
 
-            if not tokens:
-                continue
+        for instruction in instructions:
+            command = instruction[0]
 
-            command = tokens[0].lower()
-
-            # Exemple d'instruction de mouvement
             if command == "move_to":
-                # move_to x y : déplace le crayon sans dessiner
-                x, y = int(tokens[1]), int(tokens[2])
+                x, y = instruction[1], instruction[2]
                 current_x, current_y = x, y
             elif command == "line_to":
-                # line_to x y : trace une ligne vers x, y
-                x, y = int(tokens[1]), int(tokens[2])
+                x, y = instruction[1], instruction[2]
                 self.canvas.create_line(current_x, current_y, x, y)
                 current_x, current_y = x, y
             elif command == "set_color":
-                # set_color color : change la couleur du trait
-                color = tokens[1]
+                color = instruction[1]
                 self.canvas.itemconfig("all", fill=color)
-            # Ajoute d'autres commandes Draw++ comme "circle", "rectangle", etc.
             elif command == "circle":
-                radius = int(tokens[1])
+                radius = instruction[1]
                 self.canvas.create_oval(current_x - radius, current_y - radius,
                                         current_x + radius, current_y + radius)
+            # Ajoutez ici d'autres commandes Draw++ si nécessaire
 
 if __name__ == "__main__":
     root = tk.Tk()

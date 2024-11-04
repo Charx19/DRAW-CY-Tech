@@ -1,0 +1,7 @@
+set_color 255,0,0
+move_to 100 100
+line_to 200 200
+circle 50
+move_to 300 300
+set_color 0,0,255
+line_to 400 400
