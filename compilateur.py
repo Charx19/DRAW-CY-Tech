@@ -1,11 +1,14 @@
 from lexer import lexer
 from parser import parse_code
 
-def compile_draw_code(code):
+def compile_draw_code(code, grammar):
     """Analyse et compile le code Draw++ en code C."""
     
     # Utiliser le lexer et parser
-    instructions = parse_code(code)  # Récupérer les instructions
+    instructions, errors = parse_code(code, grammar)  # Récupérer les instructions
+
+    if errors:
+        raise ValueError("Des erreurs de syntaxe ont été trouvées. Compilation annulée.")
 
     # Écrire le code C dans un fichier
     c_code = []
