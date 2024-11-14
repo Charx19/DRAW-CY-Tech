@@ -35,6 +35,11 @@ class DrawPPIDE:
         self.compile_menu = tk.Menu(self.menu, tearoff=0)
         self.menu.add_cascade(label="Compile", menu=self.compile_menu)
         self.compile_menu.add_command(label="Compile", command=self.compile_draw_code)
+
+        #menu help readme
+        self.help_menu = tk.Menu(self.menu, tearoff=0)
+        self.help_menu.add_command(label="Get help", command=self.open_readme)
+        self.menu.add_cascade(label="Help", menu=self.help_menu)
         
         # Création du Notebook (onglets)
         self.notebook = ttk.Notebook(root)
