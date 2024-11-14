@@ -111,7 +111,10 @@ class DrawPPIDE:
         for widget in current_frame.winfo_children():
             if isinstance(widget, tk.Text):
                 return widget  # Retourne le Text widget dans l'onglet actif
-
+                
+    def open_readme(self):
+        readme_path="README.md"
+        os.system(f'start {readme_path}')
 
     def open_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Draw++ Files", "*.dpp")])
