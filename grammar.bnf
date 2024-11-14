@@ -1,0 +1,13 @@
+Program        ::= { Instruction }
+
+Instruction    ::= MoveTo | LineTo | SetColor | Circle
+
+MoveTo         ::= "move_to" Number "," Number
+LineTo         ::= "line_to" Number "," Number
+SetColor       ::= "set_color" Color
+Circle         ::= "circle" Number
+
+Number         ::= Digit { Digit }
+Color          ::= "red" | "blue" | "green" | "black" | "yellow"
+
+Digit          ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
