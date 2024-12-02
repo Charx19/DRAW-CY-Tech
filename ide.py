@@ -4,6 +4,7 @@ from instructions import *  # Importer votre répertoire d'instructions
 from compilateur import compile_draw_code
 from parser import load_grammar, parse_code
 import os
+import math
 
 class DrawPPIDE:
     def __init__(self, root):
@@ -111,7 +112,7 @@ class DrawPPIDE:
         for widget in current_frame.winfo_children():
             if isinstance(widget, tk.Text):
                 return widget  # Retourne le Text widget dans l'onglet actif
-                
+
     def open_readme(self):
         readme_path="README.md"
         os.system(f'start {readme_path}')
@@ -141,15 +142,12 @@ class DrawPPIDE:
     def run_draw_code(self):
         text_area = self.get_current_text_widget()
         code = text_area.get(1.0, tk.END)
-        # Effacer les anciennes erreurs et la sortie précédente
         text_area.tag_remove("error", "1.0", tk.END)
         self.output_area.config(state="normal")
         self.output_area.delete(1.0, tk.END)
         
-        # Analyser le code et obtenir les instructions et les erreurs
         instructions, errors = parse_code(code, self.grammar)
 
-        # Afficher les erreurs de syntaxe
         for line_number, line in errors:
             start_index = f"{line_number}.0"
             end_index = f"{line_number}.{len(line)}"
@@ -161,28 +159,94 @@ class DrawPPIDE:
             self.output_area.config(state="disabled")
             return
         
-        # Initialiser la position et effacer la zone de dessin
-        current_x, current_y = 100, 100
         self.canvas.delete("all")
-        
-        # Exécuter les instructions
-        for command, *args in instructions:
-            if command == "move_to":
+        cursor_state = {}
+
+        for command, var_name, *args in instructions:
+            if command == "cursor":
+                color, x, y = args
+                cursor_state[var_name] = {"x": x, "y": y, "color": color}
+                cursor_size = 5
+                # Créez un rectangle pour représenter le curseur sur le canvas
+                cursor_state[var_name]["id"] = self.canvas.create_rectangle(
+                    x - cursor_size, y - cursor_size,
+                    x + cursor_size, y + cursor_size,
+                    fill=color, outline=color)
+            
+            elif command == "move_to":
                 x, y = args
-                self.canvas.create_line(current_x, current_y, x, y)
-                current_x, current_y = x, y
+                if var_name in cursor_state:
+                    # Mise à jour visuelle de la position du curseur
+                    cursor_info = cursor_state[var_name]
+                    # Déplacer le rectangle représentant le curseur
+                    self.canvas.coords(cursor_info["id"], 
+                                    x - 5, y - 5, x + 5, y + 5)
+                    cursor_info["x"], cursor_info["y"] = x, y  # Mettre à jour la position interne
+
+            elif command == "move_by":
+                # Extraire les arguments : angle et distance
+                angle, distance = args
+                
+                # Vérifier si le curseur existe dans l'état des curseurs
+                if var_name not in cursor_state:
+                    cursor_state[var_name] = {"x": 0, "y": 0, "id": None}  # Position initiale (0, 0)
+                
+                # Utiliser la fonction move_by pour calculer la nouvelle position
+                current_x, current_y = cursor_state[var_name]["x"], cursor_state[var_name]["y"]
+                new_x, new_y = move_by(self.canvas, current_x, current_y, angle, distance)
+                
+                # Mettre à jour les coordonnées internes du curseur dans l'état
+                cursor_state[var_name]["x"], cursor_state[var_name]["y"] = new_x, new_y
+                
+                # Si le curseur n'a pas encore de rectangle, le créer
+                if cursor_state[var_name]["id"] is None:
+                    cursor_state[var_name]["id"] = self.canvas.create_rectangle(
+                        new_x - 5, new_y - 5, new_x + 5, new_y + 5, fill="blue", outline="blue")
+                else:
+                    # Mettre à jour les coordonnées du rectangle pour le curseur
+                    self.canvas.coords(cursor_state[var_name]["id"], 
+                                    new_x - 5, new_y - 5, new_x + 5, new_y + 5)
             elif command == "line_to":
                 x, y = args
-                self.canvas.create_line(current_x, current_y, x, y)
-                current_x, current_y = x, y
+                if var_name in cursor_state:
+                        cursor_info = cursor_state[var_name]
+                        self.canvas.create_line(cursor_info["x"], cursor_info["y"], x, y)
+                        # Déplacer le curseur visuellement à la nouvelle position
+                        self.canvas.coords(cursor_info["id"], 
+                                        x - 5, y - 5, x + 5, y + 5)
+                        cursor_info["x"], cursor_info["y"] = x, y
+
             elif command == "set_color":
                 color = args[0]
-                self.canvas.itemconfig("all", fill=color)
+                if var_name in cursor_state:
+                    cursor_info = cursor_state[var_name]
+                    cursor_info["color"] = color
+                    # Changez la couleur visuelle du curseur
+                    self.canvas.itemconfig(cursor_info["id"], fill=color, outline=color)
+
             elif command == "circle":
                 radius = args[0]
-                self.canvas.create_oval(current_x - radius, current_y - radius,
-                                        current_x + radius, current_y + radius)
+                if var_name in cursor_state:
+                    x, y = cursor_state[var_name]["x"], cursor_state[var_name]["y"]
+                    # Dessine un cercle autour de la position actuelle du curseur
+                    self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius)
+            elif command == "line_by":
+                angle, distance = args
+                if var_name in cursor_state:
+                    # Récupérer la position actuelle du curseur
+                    cursor_info = cursor_state[var_name]
+                    current_x, current_y = cursor_info["x"], cursor_info["y"]
+                    
+                    # Appeler la fonction line_by pour tracer la ligne et obtenir la nouvelle position
+                    new_x, new_y = line_by(self.canvas, current_x, current_y, angle, distance)
+                    
+                    # Mettre à jour la position du curseur dans l'état interne
+                    cursor_info["x"], cursor_info["y"] = new_x, new_y
+                    
+                    # Déplacer le rectangle représentant le curseur
+                    self.canvas.coords(cursor_info["id"], new_x - 5, new_y - 5, new_x + 5, new_y + 5)
 
+        
         self.output_area.insert(tk.END, "Exécution réussie.\n")
         self.output_area.config(state="disabled")
 
