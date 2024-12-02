@@ -1,6 +1,6 @@
 Program          ::= { Instruction }
 
-Instruction      ::= Declaration | Action
+Instruction      ::= Declaration | Action | Loop | Conditional
 
 Declaration      ::= Identifier "=" Cursor
 
@@ -13,6 +13,12 @@ Circle           ::= "circle" Identifier "," Number
 Cursor           ::= "cursor" Color Number "," Number
 MoveBy           ::= "move_by" Number Number
 LineBy           ::= "line_by" Number Number
+
+Loop ::= "for" Identifier "in" Range "{" { Instruction } "}"
+Range ::= Number "to" Number
+Conditional ::= "if" Condition "{" { Instruction } "}" [ "else" "{" { Instruction } "}" ]
+Condition ::= Identifier ComparisonOperator Number
+ComparisonOperator ::= "==" | "!=" | "<" | ">" | "<=" | ">="
 
 Identifier       ::= Letter { Letter | Digit }
 
