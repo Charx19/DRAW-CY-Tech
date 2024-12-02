@@ -1,56 +1,41 @@
 import ply.lex as lex
 
-# List of tokens
+# Liste des tokens
 tokens = [
     'MOVE_TO',
+    'MOVE_BY',
     'LINE_TO',
     'SET_COLOR',
     'CIRCLE',
+    'CURSOR',
     'NUMBER',
     'STRING',
     'NEWLINE',
-    'RECTANGLE', 
-    'TRIANGLE', 
-    'COLOR', 
-    'SINGLELINE_COMMENT',
-    'MULTILINE_COMMENT',
+    'LINE_BY',
 ]
 
-# Definition of regular expressions for the tokens
+# Définition des expressions régulières pour les tokens
 t_MOVE_TO = r'move_to'
+t_MOVE_BY = r'move_by'
 t_LINE_TO = r'line_to'
 t_SET_COLOR = r'set_color'
 t_CIRCLE = r'circle'
-t_RECTANGLE = r'rectangle'
-t_TRIANGLE = r'triangle'
+t_CURSOR = r'cursor' 
 t_NUMBER = r'\d+'
-t_STRING = r'\".*?\"'  # Strings enclosed in quotes
+t_LINE_BY = r'line_by'
+t_STRING = r'\".*?\"'  # Chaînes entre guillemets
 
-# Colors
-def t_COLOR(t):
-    r'red|blue|green|black|yellow'
-    return t
-
-# Ignore spaces and tabs
+# Ignorer les espaces et tabulations
 t_ignore = ' \t'
 
-# Handling newlines
+# Traitement des nouvelles lignes
 def t_NEWLINE(t):
     r'\n+'
     t.lexer.lineno += len(t.value)
 
-def t_SINGLELINE_COMMENT(t):
-    r'//.*'
-    pass  #  Ignore single-line comments
-
-def t_MULTILINE_COMMENT(t):
-    r'/\*.*?\*/'
-    pass  # Ignore multi-line comments
-
-# Error handling
+# Gestion des erreurs
 def t_error(t):
     print(f"Erreur de lexing à la ligne {t.lineno}: {t.value}")
-    t.lexer.skip(1)
 
-# Creating the lexer
+# Création du lexer
 lexer = lex.lex()
