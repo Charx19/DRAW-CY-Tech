@@ -27,7 +27,7 @@ def parse_code(code, grammar):
         
         # Détecter les affectations de curseurs avec des commandes
         if re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_to\s+(\d+)\s+(\d+)$', line):
-            # Ex: cursor1 = move_to 100, 100
+            # Ex: cursor1 = move_to 100 100
             match = re.match(r'([a-zA-Z_]\w*)\s*=\s*move_to\s+(\d+)\s+(\d+)', line)
             var_name, x, y = match.group(1), int(match.group(2)), int(match.group(3))
             instructions.append(("move_to", var_name, x, y))
@@ -43,9 +43,9 @@ def parse_code(code, grammar):
             angle = int(match.group(2))  # Angle en degrés
             distance = int(match.group(3))  # Distance en pixels
             instructions.append(("line_by", var_name, angle, distance))
-        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*line_to\s+\d+\s*,\s*\d+$', line):
-            # Ex: cursor1 = line_to 150, 150
-            match = re.match(r'([a-zA-Z_]\w*)\s*=\s*line_to\s+(\d+)\s*,\s*(\d+)', line)
+        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*line_to\s+(\d+)\s+(\d+)$', line):
+            # Ex: cursor1 = line_to 150 150
+            match = re.match(r'([a-zA-Z_]\w*)\s*=\s*line_to\s+(\d+)\s+(\d+)', line)
             var_name, x, y = match.group(1), int(match.group(2)), int(match.group(3))
             instructions.append(("line_to", var_name, x, y))
         elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*set_color\s+"(red|blue|green|black|yellow)"$', line):
