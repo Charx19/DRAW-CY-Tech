@@ -26,9 +26,9 @@ def parse_code(code, grammar):
             continue
         
         # Détecter les affectations de curseurs avec des commandes
-        if re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_to\s+\d+\s*,\s*\d+$', line):
+        if re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_to\s+(\d+)\s+(\d+)$', line):
             # Ex: cursor1 = move_to 100, 100
-            match = re.match(r'([a-zA-Z_]\w*)\s*=\s*move_to\s+(\d+)\s*,\s*(\d+)', line)
+            match = re.match(r'([a-zA-Z_]\w*)\s*=\s*move_to\s+(\d+)\s+(\d+)', line)
             var_name, x, y = match.group(1), int(match.group(2)), int(match.group(3))
             instructions.append(("move_to", var_name, x, y))
         elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_by\s+(\d+)\s+(\d+)$', line):
