@@ -22,12 +22,25 @@ def compile_draw_code(code, grammar):
             x = instruction[1]
             y = instruction[2]
             c_code.append(f"line_to({x}, {y});")
+        elif command == "line_by":
+            x = instruction[1]
+            y = instruction[2]
+            c_code.append(f"line_by({x}, {y});")
+        elif command == "move_by":
+            x = instruction[1]
+            y = instruction[2]
+            c_code.append(f"move_by({x}, {y});")
         elif command == "set_color":
             color = instruction[1]
             c_code.append(f"set_color(\"{color}\");")
         elif command == "circle":
             radius = instruction[1]
             c_code.append(f"circle({radius});")
+        elif command == "cursor":
+            color = instruction[1]  # Couleur (par exemple, "blue")
+            x = instruction[2]  # Position x
+            y = instruction[3]  # Position y
+            c_code.append(f"cursor(\"{color}\", {x}, {y});")
         else:
             raise ValueError(f"Instruction inconnue : '{command}'")
 
