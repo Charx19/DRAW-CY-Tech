@@ -27,39 +27,36 @@ def resolve_variable_or_value(value, variables, line_number, errors):
         errors.append((line_number, f"Invalid value: '{value}'"))
         return None
 
-def analyze_if_statement(line, line_number, instructions, errors, context):
+def evaluate_condition(condition, variables, line_number, errors):
     """
-    Analyse une ligne de type 'if', évalue la condition et exécute l'instruction correspondante.
+    Évalue une condition simple (ex. a == b, x > 5) et retourne True ou False.
+    La condition est supposée être une comparaison entre des variables ou des valeurs numériques.
     """
-    # Vérifie la structure de base de l'if
-    match = re.match(r'^if\s*\((.*?)\)\s*\{', line)
-    if not match:
-        errors.append((line_number, f"Invalid 'if' syntax: {line}"))
-        return
-    
-    # Extraire la condition entre les parenthèses
-    condition = match.group(1).strip()
-    try:
-        # Évaluer la condition dans un contexte sécurisé
-        condition_result = eval(condition, {}, context)
-    except Exception as e:
-        errors.append((line_number, f"Erreur dans la condition '{condition}': {str(e)}"))
-        return
-    
-    # Extraire le bloc de code entre les accolades
-    block_match = re.search(r'\{(.*)\}', line, re.DOTALL)
-    if not block_match:
-        errors.append((line_number, "Le bloc de code '{}' est manquant ou incorrect."))
-        return
-    
-    block_code = block_match.group(1).strip()
-    
-    if condition_result:
-        # Si la condition est vraie, ajouter le code à exécuter
-        instructions.append(("execute", block_code))
-    else:
-        # Si la condition est fausse, ignorer le bloc
-        instructions.append(("skip", line))
+    match = re.match(r'([a-zA-Z_]\w*)\s*(==|!=|<|<=|>|>=)\s*(\d+|\w+)', condition)
+    if match:
+        lhs = match.group(1)
+        operator = match.group(2)
+        rhs = match.group(3)
+
+        lhs_value = resolve_variable_or_value(lhs, variables, line_number, errors)
+        rhs_value = resolve_variable_or_value(rhs, variables, line_number, errors)
+
+        if lhs_value is None or rhs_value is None:
+            return False  # Si une des valeurs est invalide, retourner False
+
+        if operator == '==':
+            return lhs_value == rhs_value
+        elif operator == '!=':
+            return lhs_value != rhs_value
+        elif operator == '<':
+            return lhs_value < rhs_value
+        elif operator == '<=':
+            return lhs_value <= rhs_value
+        elif operator == '>':
+            return lhs_value > rhs_value
+        elif operator == '>=':
+            return lhs_value >= rhs_value
+    return False  # Retourner False si la condition ne correspond pas à une forme valide
 
 def parse_code(code, grammar):
     """Analyse le code Draw++ en fonction de la grammaire et renvoie une liste d'instructions et les erreurs."""
@@ -75,8 +72,7 @@ def parse_code(code, grammar):
         if not line:
             continue
          # Gérer les déclarations de variables (par exemple: int x = 0)
-        match = re.match(r'^(int|float)\s+([a-zA-Z_]\w*)\s*=\s*(\d+(\.\d*)?)$', line)
-        if match:
+        if re.match(r'^(int|float)\s+([a-zA-Z_]\w*)\s*=\s*(\d+(\.\d*)?)$', line):
             var_type = match.group(1)  # 'int' ou 'float'
             var_name = match.group(2)  # Nom de la variable
             value = float(match.group(3))  # La valeur (entier ou flottant)
@@ -92,8 +88,7 @@ def parse_code(code, grammar):
             continue
         
         # Modifier une variable déjà déclarée
-        match = re.match(r'([a-zA-Z_]\w*)\s*=\s*(\d+(\.\d*)?)$', line)
-        if match:
+        elif re.match(r'([a-zA-Z_]\w*)\s*=\s*(\d+(\.\d*)?)$', line):
             var_name = match.group(1)
             new_value = float(match.group(2))
 
@@ -109,7 +104,7 @@ def parse_code(code, grammar):
                 errors.append((line_number, f"Variable '{var_name}' not declared"))  # Erreur de variable non déclarée
 
         # Détecter les affectations de curseurs avec des commandes
-        if re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_to\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)$', line):
+        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_to\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)$', line):
             match = re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_to\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)', line)
             var_name, x_var, y_var = match.group(1), (match.group(2)), (match.group(3))
 
@@ -120,7 +115,7 @@ def parse_code(code, grammar):
             if x is not None and y is not None:
                 instructions.append(("move_to", var_name, x, y))
 
-        if line.startswith("if"):
+        elif line.startswith("if"):
             # Vérification basique pour reconnaître un 'if'
             match = re.match(r'^if\s*\((.*?)\)', line)
             if match:
@@ -129,7 +124,7 @@ def parse_code(code, grammar):
                 errors.append((line_number, f"Invalid 'if' syntax: {line}"))
             continue
 
-        if re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_by\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)$', line):
+        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_by\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)$', line):
             match = re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_by\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)', line)
             var_name = match.group(1)  # Nom du curseur
             angle_var = (match.group(2))  # Angle en degrés
@@ -141,7 +136,7 @@ def parse_code(code, grammar):
             if angle is not None and distance is not None:
                 instructions.append(("move_by", var_name, angle, distance))
 
-        if re.match(r'^([a-zA-Z_]\w*)\s*=\s*line_by\s+(.+)\s+(.+)$', line):
+        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*line_by\s+(.+)\s+(.+)$', line):
             match = re.match(r'^([a-zA-Z_]\w*)\s*=\s*line_by\s+(.+)\s+(.+)', line)
             var_name = match.group(1)  # Nom du curseur
             angle_var = (match.group(2))  # Angle en degrés
@@ -154,7 +149,7 @@ def parse_code(code, grammar):
             if angle is not None and distance is not None:
                 instructions.append(("line_by", var_name, angle, distance))
 
-        if re.match(r'^([a-zA-Z_]\w*)\s*=\s*line_to\s+(.+)\s+(.+)$', line):
+        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*line_to\s+(.+)\s+(.+)$', line):
             match = re.match(r'([a-zA-Z_]\w*)\s*=\s*line_to\s+(.+)\s+(.+)', line)
             var_name, x_var, y_var = match.group(1), (match.group(2)), (match.group(3))
             # Résoudre les variables ou valeurs numériques
@@ -164,12 +159,12 @@ def parse_code(code, grammar):
             if x is not None and y is not None:
                 instructions.append(("line_to", var_name, x, y))
 
-        if re.match(r'^([a-zA-Z_]\w*)\s*=\s*set_color\s+"(red|blue|green|black|yellow)"$', line):
+        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*set_color\s+"(red|blue|green|black|yellow)"$', line):
             match = re.match(r'([a-zA-Z_]\w*)\s*=\s*set_color\s+"(.*?)"', line)
             var_name, color = match.group(1), match.group(2)
             instructions.append(("set_color", var_name, color))
 
-        if re.match(r'^([a-zA-Z_]\w*)\s*=\s*circle\s+(.+)$', line):  # Accepter une variable ou une valeur numérique
+        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*circle\s+(.+)$', line):  # Accepter une variable ou une valeur numérique
             match = re.match(r'([a-zA-Z_]\w*)\s*=\s*circle\s+(.+)$', line)
             var_name, radius_var = match.group(1), (match.group(2))
 
@@ -179,7 +174,7 @@ def parse_code(code, grammar):
             if radius is not None:
                 instructions.append(("circle", var_name, radius))
 
-        if re.match(r'^[a-zA-Z_]\w*\s*=\s*cursor\s+"(red|blue|green|black|yellow)"\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)$', line):
+        elif re.match(r'^[a-zA-Z_]\w*\s*=\s*cursor\s+"(red|blue|green|black|yellow)"\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)$', line):
             match = re.match(r'([a-zA-Z_]\w*)\s*=\s*cursor\s+"(red|blue|green|black|yellow)"\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)', line)
             var_name, color, x_var, y_var = match.group(1), match.group(2), match.group(3), match.group(4)
 
