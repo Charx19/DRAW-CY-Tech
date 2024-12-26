@@ -1,0 +1,33 @@
+Program          ::= { Instruction }
+
+Instruction      ::= Declaration | Action | ControlStructure
+
+ControlStructure ::= IfStructure | WhileStructure
+
+IfStructure      ::= "if" "(" Condition ")" "{" { Instruction } "}"
+                     | "if" "(" Condition ")" "{" { Instruction } "}" "else" "{" { Instruction } "}"
+
+WhileStructure   ::= "while" "(" Condition ")" "{" { Instruction } "}"
+
+Condition        ::= Expression ComparisonOperator Expression
+ComparisonOperator ::= "==" | "!=" | "<" | ">" | "<=" | ">="
+
+Declaration      ::= Identifier "=" (Cursor | Number | Expression)
+
+Action           ::= MoveTo | LineTo | SetColor | Circle | VariableAction
+VariableAction   ::= "move_by" Identifier "," Number "," Number
+                    | "line_by" Identifier "," Number "," Number
+
+MoveTo           ::= "move_to" Identifier "," Number "," Number
+LineTo           ::= "line_to" Identifier "," Number "," Number
+SetColor         ::= "set_color" Identifier "," Color
+Circle           ::= "circle" Identifier "," Number
+Cursor           ::= "cursor" Color Number "," Number
+
+Identifier       ::= Letter { Letter | Digit }
+Number           ::= Digit { Digit }
+Color            ::= "red" | "blue" | "green" | "black" | "yellow"
+
+Expression       ::= Identifier | Number
+Letter           ::= "a" | "b" | ... | "z" | "A" | "B" | ... | "Z"
+Digit            ::= "0" | "1" | "2" | ... | "9"
