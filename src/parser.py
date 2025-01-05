@@ -1,190 +1,222 @@
-import re
+import ply.lex as lex
+import ply.yacc as yacc
 
-def load_grammar(filename):
-    """Charge la grammaire à partir d'un fichier."""
-    grammar = {}
+def load_grammar_from_bnf(filename):
+    grammar_rules = []
     with open(filename, 'r') as file:
-        rules = file.read().strip().splitlines()
-        for rule in rules:
-            if '::=' in rule:
-                lhs, rhs = rule.split('::=')
-                lhs = lhs.strip()
-                rhs = rhs.strip().split('|')
-                grammar[lhs] = [r.strip() for r in rhs]
-    return grammar
+        for line in file:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            lhs, rhs = line.split("::=")
+            lhs = lhs.strip()
+            rhs = rhs.strip().split("|")
+            for rule in rhs:
+                grammar_rules.append((lhs, rule.strip().split()))
+    return grammar_rules
 
-def resolve_variable_or_value(value, variables, line_number, errors):
-    """
-    Résout une valeur soit comme un entier littéral, soit comme une variable déclarée.
-    """
-    if isinstance(value, int):  # Si c'est déjà un entier, le retourner directement
-        return value
-    elif value.isdigit():  # Si c'est une chaîne qui représente un entier
-        return int(value)
-    elif value in variables and variables[value]["type"] == "int":  # Si c'est une variable valide
-        return variables[value]["value"]
-    else:  # Sinon, c'est une erreur
-        errors.append((line_number, f"Invalid value: '{value}'"))
-        return None
+def parse_code(code, grammar_file):
+    """Parse le code en utilisant une grammaire BNF chargée dynamiquement."""
+    # Charger la grammaire depuis le fichier
+    grammar = load_grammar_from_bnf(grammar_file)
 
-def evaluate_condition(condition, variables, line_number, errors):
-    """
-    Évalue une condition simple (ex. a == b, x > 5) et retourne True ou False.
-    La condition est supposée être une comparaison entre des variables ou des valeurs numériques.
-    """
-    match = re.match(r'([a-zA-Z_]\w*)\s*(==|!=|<|<=|>|>=)\s*(\d+|\w+)', condition)
-    if match:
-        lhs = match.group(1)
-        operator = match.group(2)
-        rhs = match.group(3)
+    # Définir les tokens
+    tokens = [
+        'IDENTIFIER', 'NUMBER', 'COLOR', 'MOVE_TO', 'LINE_TO', 'SET_COLOR', 'CIRCLE', 'MOVE_BY', 'IF', 'WHILE', 'EQ', 'NEQ', 'LT', 'GT', 'LEQ', 'GEQ',
+        'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE', 'COMMA', 'ASSIGN', 'CURSOR'
+    ]
 
-        lhs_value = resolve_variable_or_value(lhs, variables, line_number, errors)
-        rhs_value = resolve_variable_or_value(rhs, variables, line_number, errors)
+    # Règles du lexer
+    def t_CURSOR(t):
+        r'cursor'  # Capture spécifiquement le mot-clé "cursor"
+        print(f"Token CURSOR: {t.value}")  # Log pour le token CURSOR
+        return t
 
-        if lhs_value is None or rhs_value is None:
-            return False  # Si une des valeurs est invalide, retourner False
+    def t_COLOR(t):
+        r'"(red|blue|green|black|yellow)"'
+        print(f"Token COLOR: {t.value}")  # Log pour le token COLOR
+        return t
 
-        if operator == '==':
-            return lhs_value == rhs_value
-        elif operator == '!=':
-            return lhs_value != rhs_value
-        elif operator == '<':
-            return lhs_value < rhs_value
-        elif operator == '<=':
-            return lhs_value <= rhs_value
-        elif operator == '>':
-            return lhs_value > rhs_value
-        elif operator == '>=':
-            return lhs_value >= rhs_value
-    return False  # Retourner False si la condition ne correspond pas à une forme valide
+    def t_IDENTIFIER(t):
+        r'[a-zA-Z_][a-zA-Z0-9_]*'
+        print(f"Token IDENTIFIER: {t.value}")  # Log pour l'identifiant
+        return t
+    
+    def t_NUMBER(t):
+        r'\d+(\.\d+)?'  # Correspond à un nombre entier ou flottant
+        print(f"Token NUMBER: {t.value}")  # Log pour afficher le token
+        return t
 
-def parse_code(code, grammar):
-    """Analyse le code Draw++ en fonction de la grammaire et renvoie une liste d'instructions et les erreurs."""
-    instructions = []
-    errors = []
-    lines = code.splitlines()
-    stack = []  # Pile pour suivre les blocs imprimés
-    variables = {}
+    def t_MOVE_TO(t):
+        r'move_to'
+        print(f"Token MOVE_TO: {t.value}")  # Log pour MOVE_TO
+        return t
 
-    for line_number, line in enumerate(lines, start=1):
-        # Supprimer les espaces en trop
-        line = line.strip()
-        if not line:
-            continue
-         # Gérer les déclarations de variables (par exemple: int x = 0)
-        if re.match(r'^(int|float)\s+([a-zA-Z_]\w*)\s*=\s*(\d+(\.\d*)?)$', line):
-            var_type = match.group(1)  # 'int' ou 'float'
-            var_name = match.group(2)  # Nom de la variable
-            value = float(match.group(3))  # La valeur (entier ou flottant)
-            if var_name in variables:
-                errors.append((line_number, f"Variable '{var_name}' already declared"))
-            else:
-                # Vérification du type et ajout dans le dictionnaire des variables
-                if var_type == 'int' and not value.is_integer():
-                    errors.append((line_number, f"Expected integer value for '{var_name}'"))
-                else:
-                    variables[var_name] = {"type": var_type, "value": int(value) if var_type == 'int' else float(value)}
-                instructions.append(("declare", var_name, value))  # Enregistrer la déclaration
-            continue
-        
-        # Modifier une variable déjà déclarée
-        elif re.match(r'([a-zA-Z_]\w*)\s*=\s*(\d+(\.\d*)?)$', line):
-            var_name = match.group(1)
-            new_value = float(match.group(2))
+    def t_LINE_TO(t):
+        r'line_to'
+        print(f"Token LINE_TO: {t.value}")  # Log pour LINE_TO
+        return t
 
-            if var_name in variables:
-                var_type = variables[var_name]["type"]
-                # Si la variable est de type 'int', on s'assure que la valeur est un entier
-                if (var_type == 'int' and new_value.is_integer()) or (var_type == 'float' and isinstance(new_value, float)):
-                    variables[var_name]["value"] = int(new_value) if var_type == 'int' else new_value
-                    instructions.append(("modify", var_name, new_value))  # Enregistrer la modification
-                else:
-                    errors.append((line_number, f"Value type mismatch for '{var_name}'"))  # Erreur de type
-            else:
-                errors.append((line_number, f"Variable '{var_name}' not declared"))  # Erreur de variable non déclarée
+    def t_SET_COLOR(t):
+        r'set_color'
+        print(f"Token SET_COLOR: {t.value}")  # Log pour SET_COLOR
+        return t
 
-        # Détecter les affectations de curseurs avec des commandes
-        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_to\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)$', line):
-            match = re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_to\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)', line)
-            var_name, x_var, y_var = match.group(1), (match.group(2)), (match.group(3))
+    def t_CIRCLE(t):
+        r'circle'
+        print(f"Token CIRCLE: {t.value}")  # Log pour CIRCLE
+        return t
 
-            # Résoudre les variables ou valeurs numériques
-            x = resolve_variable_or_value(x_var, variables, line_number, errors)
-            y = resolve_variable_or_value(y_var, variables, line_number, errors)
+    def t_MOVE_BY(t):
+        r'move_by'
+        print(f"Token MOVE_BY: {t.value}")  # Log pour MOVE_BY
+        return t
 
-            if x is not None and y is not None:
-                instructions.append(("move_to", var_name, x, y))
+    def t_IF(t):
+        r'if'
+        print(f"Token IF: {t.value}")  # Log pour IF
+        return t
 
-        elif line.startswith("if"):
-            # Vérification basique pour reconnaître un 'if'
-            match = re.match(r'^if\s*\((.*?)\)', line)
-            if match:
-                instructions.append(("if_detected", line))
-            else:
-                errors.append((line_number, f"Invalid 'if' syntax: {line}"))
-            continue
+    def t_WHILE(t):
+        r'while'
+        print(f"Token WHILE: {t.value}")  # Log pour WHILE
+        return t
 
-        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_by\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)$', line):
-            match = re.match(r'^([a-zA-Z_]\w*)\s*=\s*move_by\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)', line)
-            var_name = match.group(1)  # Nom du curseur
-            angle_var = (match.group(2))  # Angle en degrés
-            distance_var = (match.group(3))  # Distance en pixels
-            # Résoudre les variables ou valeurs numériques
-            angle = resolve_variable_or_value(angle_var, variables, line_number, errors)
-            distance = resolve_variable_or_value(distance_var, variables, line_number, errors)
+    def t_EQ(t):
+        r'=='
+        print(f"Token EQ: {t.value}")  # Log pour EQ
+        return t
 
-            if angle is not None and distance is not None:
-                instructions.append(("move_by", var_name, angle, distance))
+    def t_NEQ(t):
+        r'!='
+        print(f"Token NEQ: {t.value}")  # Log pour NEQ
+        return t
 
-        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*line_by\s+(.+)\s+(.+)$', line):
-            match = re.match(r'^([a-zA-Z_]\w*)\s*=\s*line_by\s+(.+)\s+(.+)', line)
-            var_name = match.group(1)  # Nom du curseur
-            angle_var = (match.group(2))  # Angle en degrés
-            distance_var = (match.group(3))  # Distance en pixels
+    def t_LT(t):
+        r'<'
+        print(f"Token LT: {t.value}")  # Log pour LT
+        return t
 
-            # Résoudre les variables ou valeurs numériques
-            angle = resolve_variable_or_value(angle_var, variables, line_number, errors)
-            distance = resolve_variable_or_value(distance_var, variables, line_number, errors)
+    def t_GT(t):
+        r'>'
+        print(f"Token GT: {t.value}")  # Log pour GT
+        return t
 
-            if angle is not None and distance is not None:
-                instructions.append(("line_by", var_name, angle, distance))
+    def t_LEQ(t):
+        r'<='
+        print(f"Token LEQ: {t.value}")  # Log pour LEQ
+        return t
 
-        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*line_to\s+(.+)\s+(.+)$', line):
-            match = re.match(r'([a-zA-Z_]\w*)\s*=\s*line_to\s+(.+)\s+(.+)', line)
-            var_name, x_var, y_var = match.group(1), (match.group(2)), (match.group(3))
-            # Résoudre les variables ou valeurs numériques
-            x = resolve_variable_or_value(x_var, variables, line_number, errors)
-            y = resolve_variable_or_value(y_var, variables, line_number, errors)
+    def t_GEQ(t):
+        r'>='
+        print(f"Token GEQ: {t.value}")  # Log pour GEQ
+        return t
 
-            if x is not None and y is not None:
-                instructions.append(("line_to", var_name, x, y))
+    def t_LPAREN(t):
+        r'\('
+        print(f"Token LPAREN: {t.value}")  # Log pour LPAREN
+        return t
 
-        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*set_color\s+"(red|blue|green|black|yellow)"$', line):
-            match = re.match(r'([a-zA-Z_]\w*)\s*=\s*set_color\s+"(.*?)"', line)
-            var_name, color = match.group(1), match.group(2)
-            instructions.append(("set_color", var_name, color))
+    def t_RPAREN(t):
+        r'\)'
+        print(f"Token RPAREN: {t.value}")  # Log pour RPAREN
+        return t
 
-        elif re.match(r'^([a-zA-Z_]\w*)\s*=\s*circle\s+(.+)$', line):  # Accepter une variable ou une valeur numérique
-            match = re.match(r'([a-zA-Z_]\w*)\s*=\s*circle\s+(.+)$', line)
-            var_name, radius_var = match.group(1), (match.group(2))
+    def t_LBRACE(t):
+        r'\{'
+        print(f"Token LBRACE: {t.value}")  # Log pour LBRACE
+        return t
 
-            # Résoudre les variables ou valeurs numériques
-            radius = resolve_variable_or_value(radius_var, variables, line_number, errors)
+    def t_RBRACE(t):
+        r'\}'
+        print(f"Token RBRACE: {t.value}")  # Log pour RBRACE
+        return t
 
-            if radius is not None:
-                instructions.append(("circle", var_name, radius))
+    def t_COMMA(t):
+        r','
+        print(f"Token COMMA: {t.value}")  # Log pour COMMA
+        return t
 
-        elif re.match(r'^[a-zA-Z_]\w*\s*=\s*cursor\s+"(red|blue|green|black|yellow)"\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)$', line):
-            match = re.match(r'([a-zA-Z_]\w*)\s*=\s*cursor\s+"(red|blue|green|black|yellow)"\s+([a-zA-Z_]\w*|\d+)\s+([a-zA-Z_]\w*|\d+)', line)
-            var_name, color, x_var, y_var = match.group(1), match.group(2), match.group(3), match.group(4)
+    def t_ASSIGN(t):
+        r'='
+        print(f"Token ASSIGN: {t.value}")  # Log pour ASSIGN
+        return t
+    # Ignorer les espaces et les tabulations
+    t_ignore = ' \t\n'
 
-            # Résoudre les variables ou valeurs numériques
-            x = resolve_variable_or_value(x_var, variables, line_number, errors)
-            y = resolve_variable_or_value(y_var, variables, line_number, errors)
+    # Fonction d'erreur pour le lexer
+    def t_error(t):
+        print(f"Erreur de token: {t.value}")
+        t.lexer.skip(1)
 
-            if x is not None and y is not None:  # Ajouter l'instruction seulement si tout est valide
-                instructions.append(("cursor", var_name, color, x, y))
+    # Initialiser le lexer
+    lexer = lex.lex()
+
+    # Définir les règles du parser
+    def p_program(p):
+        """program : instruction"""
+        print(f"Règle appliquée: program")
+        p[0] = p[1]
+
+    def p_instruction_declaration(p):
+        """instruction : declaration"""
+        print(f"Règle appliquée: instruction_declaration")
+        p[0] = ('declaration', p[1])
+
+    def p_instruction_action(p):
+        """instruction : action"""
+        print(f"Règle appliquée: instruction_action")
+        p[0] = ('action', p[1])
+
+    def p_declaration(p):
+        """declaration : IDENTIFIER ASSIGN NUMBER"""
+        print(f"Déclaration de la variable {p[1]} avec la valeur {p[3]}")
+        p[0] = ('declaration', p[1], p[3])
+    def p_cursor(p):
+        """cursor : IDENTIFIER ASSIGN CURSOR COLOR NUMBER COMMA NUMBER"""
+        print(f"Curseur: {p[2]}, X: {p[4]}, Y: {p[6]}")
+        p[0] = ('cursor', p[2], p[4], p[6])
+    def p_action_move_to(p):
+        """action : IDENTIFIER ASSIGN MOVE_TO NUMBER COMMA NUMBER"""
+        print(f"Action: move_to, Identifiant: {p[1]}, X: {p[4]}, Y: {p[6]}")
+        p[0] = ('move_to', p[1], p[4], p[6])
+
+    def p_action_line_to(p):
+        """action : IDENTIFIER ASSIGN LINE_TO NUMBER COMMA NUMBER"""
+        print(f"Action: line_to, Identifiant: {p[1]}, X: {p[4]}, Y: {p[6]}")
+        p[0] = ('line_to', p[1], p[4], p[6])
+
+    def p_action_set_color(p):
+        """action : IDENTIFIER ASSIGN SET_COLOR COLOR"""
+        print(f"Action: set_color, Identifiant: {p[1]}, Couleur: {p[4]}")
+        p[0] = ('set_color', p[1], p[4])
+
+    def p_action_circle(p):
+        """action : IDENTIFIER ASSIGN CIRCLE NUMBER"""
+        print(f"Action: circle, Identifiant: {p[1]}, Rayon: {p[4]}")
+        p[0] = ('circle', p[1], p[4])
+
+    def p_action_move_by(p):
+        """action : IDENTIFIER ASSIGN MOVE_BY NUMBER COMMA NUMBER"""
+        print(f"Action: move_by, Identifiant: {p[1]}, Delta X: {p[4]}, Delta Y: {p[6]}")
+        p[0] = ('move_by', p[1], p[4], p[6])
+
+    def p_error(p):
+        if p:
+            print(f"Erreur de syntaxe: '{p.value}' à la ligne {p.lineno}")
         else:
-            errors.append((line_number, line))  # Stocker la ligne d'erreur si la syntaxe n'est pas reconnue
+            print("Erreur de syntaxe à la fin du fichier.")
+
+    # Créer le parser avec la grammaire chargée
+    parser = yacc.yacc()
+
+    # Analyser le code
+    errors = []
+    try:
+        instructions = parser.parse(code, lexer=lexer)
+    except SyntaxError as e:
+        line_number = e.args[0].split('Ligne')[1].strip().split(',')[0]
+        errors.append((int(line_number), e.args[0]))
+        instructions = None
 
     return instructions, errors
