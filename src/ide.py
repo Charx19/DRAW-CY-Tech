@@ -37,14 +37,14 @@ class DrawPPIDE:
         self.file_menu.add_command(label="Exit", command=root.quit)
         
         # Menu Exécution
-        self.run_menu = tk.Menu(self.menu, tearoff=0)
-        self.menu.add_cascade(label="Run", menu=self.run_menu)
-        self.run_menu.add_command(label="Run", command=self.run_draw_code)
+        #self.run_menu = tk.Menu(self.menu, tearoff=0)
+        #self.menu.add_cascade(label="Run", menu=self.run_menu)
+        #self.run_menu.add_command(label="Run", command=self.run_draw_code)
 
         # Menu Compilation
         self.compile_menu = tk.Menu(self.menu, tearoff=0)
-        self.menu.add_cascade(label="Compile", menu=self.compile_menu)
-        self.compile_menu.add_command(label="Compile", command=self.compile_draw_code)
+        self.menu.add_cascade(label="Execute", menu=self.compile_menu)
+        self.compile_menu.add_command(label="Execute", command=self.compile_draw_code)
 
         #menu help readme
         self.help_menu = tk.Menu(self.menu, tearoff=0)
