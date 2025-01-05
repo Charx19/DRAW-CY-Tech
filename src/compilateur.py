@@ -1,5 +1,5 @@
 from parser import parse_code
-def compile_draw_code(code, grammar):
+def compile_draw_code_to_c(code, grammar):
     """Analyse et compile le code Draw++ en code C, et retourne le code généré."""
     
     instructions, errors = parse_code(code, grammar)  # Analyse et récupère les instructions
@@ -25,6 +25,9 @@ def compile_draw_code(code, grammar):
         "",
         "int WinMain(int argc, char **argv) {",
         "    init_graphics();  // Initialisation du système graphique",
+        "    int current_x, current_y;",
+        "    char current_color[20] = \"\";",
+
     ]
     declared_variables = {}
 
@@ -58,11 +61,17 @@ def compile_draw_code(code, grammar):
             elif command == "line_to":
                 var_name = instruction[1]
                 x, y = instruction[2], instruction[3]
-                c_code.append(f"{indent(indent_level)}line_to({var_name},{x}, {y});")
+                # Supposons que vous ayez des variables current_x et current_y qui représentent
+                # les coordonnées actuelles du point de départ de la ligne.
+                c_code.append(f"{indent(indent_level)}line_to({var_name}, {x}, {y});")
+                c_code.append(f"{indent(indent_level)}add_line(current_x, current_y, {x}, {y}, \"{color}\");")
+                c_code.append(f"{indent(indent_level)}current_x = {x};")
+                c_code.append(f"{indent(indent_level)}current_y = {y};")
             elif command == "line_by":
                 var_name = instruction[1]
                 x, y = instruction[2], instruction[3]
                 c_code.append(f"{indent(indent_level)}line_by({var_name},{x}, {y});")
+                c_code.append(f"{indent(indent_level)}add_line({x}, {y}, {radius}, \"{color}\");")
             elif command == "move_by":
                 var_name = instruction[1]
                 x, y = instruction[2], instruction[3]
@@ -73,8 +82,26 @@ def compile_draw_code(code, grammar):
                 c_code.append(f"{indent(indent_level)}set_color({var_name},\"{color}\");")
             elif command == "circle":
                 var_name = instruction[1]
-                radius = instruction[2]
-                c_code.append(f"{indent(indent_level)}circle({var_name},{radius});")
+                x = instruction[2]
+                y = instruction[3]
+                radius = instruction[4]
+                color = instruction[5]
+
+                # Créez un objet avec les propriétés du cercle
+                c_code.append(f"{indent(indent_level)}Object circle_{var_name};")
+                c_code.append(f"{indent(indent_level)}circle_{var_name}.type = CIRCLE;")
+                c_code.append(f"{indent(indent_level)}circle_{var_name}.x1 = current_x;")
+                c_code.append(f"{indent(indent_level)}circle_{var_name}.y1 = current_y;")
+                c_code.append(f"{indent(indent_level)}circle_{var_name}.radius = {radius};")
+                c_code.append(f"{indent(indent_level)}strcpy(circle_{var_name}.color, current_color);")
+                c_code.append(f"{indent(indent_level)}add_circle(current_x, current_y, {radius}, current_color);")
+
+                # Appelez la fonction circle avec l'objet
+                c_code.append(f"{indent(indent_level)}circle(circle_{var_name});")
+
+                # Ajoutez le cercle à la liste des objets
+                
+
             elif command == "cursor":  # Gestion de la commande cursor
                 var_name = instruction[1]
                 color = instruction[2]
@@ -87,6 +114,10 @@ def compile_draw_code(code, grammar):
                 declared_variables[var_name] = "Cursor"
                 c_code.append(f"{indent(indent_level)}Cursor {var_name} = create_cursor(\"{color}\", {x}, {y});")
                 c_code.append(f"{indent(indent_level)}cursor(\"{color}\",{x},{y},10);") 
+                c_code.append(f"{indent(indent_level)}add_cursor(\"{color}\", {x}, {y});")  # Ajout au tableau d'objets
+                c_code.append(f"{indent(indent_level)}current_x = {x};")
+                c_code.append(f"{indent(indent_level)}current_y = {y};")
+                c_code.append(f"{indent(indent_level)}strcpy(current_color, \"{color}\");")
             elif command == "declare":  # Gestion de l'affectation de variable
                 var_name = instruction[1]
                 value = instruction[2]
@@ -122,6 +153,7 @@ def compile_draw_code(code, grammar):
     c_code.append(f"{indent(3)}if (event.type == SDL_QUIT) {{")
     c_code.append(f"{indent(4)}running = 0;")
     c_code.append(f"{indent(3)}}}")
+    c_code.append(f"{indent(3)}handle_mouse_selection(&event);")
     c_code.append(f"{indent(2)}}}")
     c_code.append(f"{indent(1)}}}")
     c_code.append(f"{indent(1)}close_graphics();")
