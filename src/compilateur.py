@@ -35,17 +35,17 @@ def compile_draw_code_to_c(code, grammar):
     def indent(level):
         return '    ' * level
 
-    # Fonction pour déduire le type d'une valeur
+    # Fonction that determines which type is the value
     def deduce_type(value):
         try:
-            int(value)  # Test si c'est un entier
+            int(value)  # Test if int
             return "int"
         except ValueError:
             try:
-                float(value)  # Test si c'est un flottant
+                float(value)  # Test if float
                 return "float"
             except ValueError:
-                return None  # Si ce n'est ni un entier ni un flottant
+                return None  # if neither, return None
 
     # Fonction pour générer le code C à partir des instructions
     def generate_c_code(instructions, indent_level=1):  # Le corps du main commence au niveau 1
