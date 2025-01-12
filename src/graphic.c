@@ -47,7 +47,7 @@ void close_graphics() {
     if (window) SDL_DestroyWindow(window);
     SDL_Quit();
 }
-// Vérifier si un objet est dans le rectangle de sélection
+// Check if an object is within the selection rectangle
 int is_object_in_selection(const SDL_Rect* selection, const Object* obj) {
     SDL_Rect intersection;
     return SDL_IntersectRect(selection, &obj->bounding_box, &intersection);
@@ -77,7 +77,7 @@ void highlight_selected_objects() {
             circle(objects[i]); // Passer l'objet directement à la fonction `circle`
         }
 
-        // Si l'objet est sélectionné, dessiner le contour bleu
+        // If the object is selected, draw the blue outline
         if (objects[i].is_selected) {
             SDL_SetRenderDrawColor(renderer, 0, 0, 255, SDL_ALPHA_OPAQUE); // Bleu
 
