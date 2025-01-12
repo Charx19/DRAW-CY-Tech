@@ -6,18 +6,18 @@
 #include <stdbool.h>
 #define MAX_OBJECTS 100
 
-// Variables globales pour gérer SDL
+// Global variables to manage SDL
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
-int current_x = 0, current_y = 0; // Position actuelle du curseur
+int current_x = 0, current_y = 0; // Current position of the cursor
 
 Object objects[MAX_OBJECTS];
 int object_count = 0;
-Object* dragged_object = NULL;  // L'objet en cours de déplacement
+Object* dragged_object = NULL;  // The object being moved
 int offset_x, offset_y;    
-// Déclaration globale
-int is_moving = 0; // Cette variable indiquera si un objet est en mouvement
-int move_speed = 2; // La vitesse de déplacement de l'objet     // Décalage par rapport à la position de la souris au moment du clic
+// Global declaration
+int is_moving = 0; // This variable will indicate if an object is in motion
+int move_speed = 2; // The movement speed of the object // Offset from the mouse position at the time of the click
 
 void init_graphics() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -69,7 +69,7 @@ void highlight_selected_objects() {
                                    strcmp(objects[i].color, "green") == 0 ? 255 : 0,
                                    strcmp(objects[i].color, "blue") == 0 ? 255 : 0,
                                    SDL_ALPHA_OPAQUE);
-            // Dessiner la ligne entre (x1, y1) et (x2, y2)
+            // Draw the line between (x1, y1) and (x2, y2)
             SDL_RenderDrawLine(renderer, 
                                objects[i].x1, objects[i].y1, 
                                objects[i].x2, objects[i].y2);
