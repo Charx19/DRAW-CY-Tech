@@ -1,33 +1,25 @@
-Program          ::= { Instruction }
+program ::= instruction program_rest 
+program_rest ::= instruction program_rest | 
 
-Instruction      ::= Declaration | Action | ControlStructure
+instruction ::= assign_stmt | cursor | circle | line_to | move_to
 
-ControlStructure ::= IfStructure | WhileStructure
+cursor ::= IDENTIFIER CURSOR COLOR NUMBER NUMBER 
+assign_stmt ::= IDENTIFIER ASSIGN NUMBER 
+circle ::= IDENTIFIER ASSIGN CIRCLE NUMBER
+line_to ::= IDENTIFIER LINE_TO NUMBER NUMBER
+move_to ::= IDENTIFIER MOVE_TO NUMBER NUMBER
 
-IfStructure      ::= "if" "(" Condition ")" "{" { Instruction } "}"
-                     | "if" "(" Condition ")" "{" { Instruction } "}" "else" "{" { Instruction } "}"
+COLOR ::= "red" | "blue" | "green" | "black" | "yellow"
+IDENTIFIER ::= <letter> (<letter> | <digit>)*
+NUMBER ::= <digit>+
+ASSIGN ::= "="
+NEQ ::= "!="
+GREATER_THAN ::= ">"
+LOWER_THAN ::= "<"
+CURSOR ::= "cursor"
+CIRCLE ::= "circle"
+LINE_TO ::= "line_to"
+MOVE_TO ::= "move_to"
 
-WhileStructure   ::= "while" "(" Condition ")" "{" { Instruction } "}"
-
-Condition        ::= Expression ComparisonOperator Expression
-ComparisonOperator ::= "==" | "!=" | "<" | ">" | "<=" | ">="
-
-Declaration      ::= Identifier "=" (Cursor | Number | Expression)
-
-Action           ::= MoveTo | LineTo | SetColor | Circle | VariableAction
-VariableAction   ::= "move_by" Identifier "," Number "," Number
-                    | "line_by" Identifier "," Number "," Number
-
-MoveTo           ::= "move_to" Identifier "," Number "," Number
-LineTo           ::= "line_to" Identifier "," Number "," Number
-SetColor         ::= "set_color" Identifier "," Color
-Circle           ::= "circle" Identifier "," Number
-Cursor           ::= "cursor" Color Number "," Number
-
-Identifier       ::= Letter { Letter | Digit }
-Number           ::= Digit { Digit }
-Color            ::= "red" | "blue" | "green" | "black" | "yellow"
-
-Expression       ::= Identifier | Number
-Letter           ::= "a" | "b" | ... | "z" | "A" | "B" | ... | "Z"
-Digit            ::= "0" | "1" | "2" | ... | "9"
+<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+<letter> ::= "a" | "b" | "c" | ... | "z" | "A" | "B" | "C" | ... | "Z"
