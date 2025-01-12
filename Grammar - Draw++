@@ -1,19 +1,19 @@
-// Programme principal qui inclut les commentaires
+// Main program which includes comments
 Program ::= (Instruction | Comment)*
 
-// Règle pour les instructions
+// Rule for instructions
 Instruction ::= Declaration | Circle | Rectangle | Line | Triangle
 
-// Commentaire sur une seule ligne
+// Single line comment
 Comment ::= SingleLineComment | MultiLineComment
 
-// Commentaire sur une seule ligne : tout ce qui commence par //
+// Single-line comment: anything that begins with //
 SingleLineComment ::= "//" .*
 
-// Commentaire sur plusieurs lignes : tout ce qui est entre /* et */
+// Multi-line comment: everything between /* and */
 MultiLineComment ::= "/*" .* "*/"
 
-// Règles pour les formes et déclarations
+// Rules for forms and declarations
 Declaration ::= "var" VariableList ";"
 VariableList ::= VariableName ("," VariableName)*
 VariableName ::= "x" | "y" | "width" | "height" | "radius" | "x1" | "y1" | "x2" | "y2" | "x3" | "y3"
