@@ -217,6 +217,23 @@ class DrawPPIDE:
             return
 
         try:
+            library_source = "src/graphic.c"
+            library_object = "src/graphic.o"
+            library_output = "lib/libgraphic.a"
+            #compilation bibliothèque graphic
+            compile_library_command = ["gcc", "-c", library_source, "-o", library_object, "-Iinclude"]
+            result_lib = subprocess.run(compile_library_command, capture_output=True, text=True)
+            if result_lib.returncode != 0:
+                raise RuntimeError(f"Erreur lors de la compilation de graphic.c : {result_lib.stderr}")
+            else:
+                print(f"Compilation de graphic.c réussie : {result_lib.stdout}")
+            create_library_command = ["ar", "rcs", library_output, library_object]
+            result_ar = subprocess.run(create_library_command, capture_output=True, text=True)
+            if result_ar.returncode != 0:
+                raise RuntimeError(f"Erreur lors de la création de libgraphic.a : {result_ar.stderr}")
+            else:
+                print(f"Bibliothèque libgraphic.a créée avec succès : {result_ar.stdout}")
+            #compilation de l'executable
             executable_name = f"bin/{tab_name}_executable"  
             compile_command = [
                 "gcc", "-o", executable_name, c_filename, "-Llib", "-lgraphic", "-Iinclude", "-lSDL2"
