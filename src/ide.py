@@ -20,13 +20,13 @@ class DrawPPIDE:
         self.start_x = None
         self.start_y = None
         self.move_start_x = None
-        self.move_start_y = None  # Stocker l'objet actuellement sélectionné
+        self.move_start_y = None  # Store currently selected object
         self.objects = {}
-        # Création de la barre de menus
+        # Creating the menu bar
         self.menu = tk.Menu(root)
         root.config(menu=self.menu)
         
-        # Menu Fichier
+        # Menu file
         self.file_menu = tk.Menu(self.menu, tearoff=0)
         self.menu.add_cascade(label="File", menu=self.file_menu)
         self.file_menu.add_command(label="New Tab", command=self.new_tab)
@@ -34,27 +34,27 @@ class DrawPPIDE:
         self.file_menu.add_command(label="Save", command=self.save_file)
         self.file_menu.add_command(label="Exit", command=root.quit)
 
-        # Menu Compilation
+        # Compilation Menu
         self.compile_menu = tk.Menu(self.menu, tearoff=0)
         self.menu.add_cascade(label="Execute", menu=self.compile_menu)
         self.compile_menu.add_command(label="Execute", command=self.compile_draw_code)
 
-        #menu help readme
+        #Menu help "readme"
         self.help_menu = tk.Menu(self.menu, tearoff=0)
         self.help_menu.add_command(label="Get help", command=self.open_readme)
         self.menu.add_cascade(label="Help", menu=self.help_menu)
         
-        # Création du Notebook (onglets)
+       # Creation of the Notebook (tabs)
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(fill='both', expand=True)
         
-        # Ajout d'un onglet par défaut "New File"
+        # Added a default “New File” tab
         self.new_tab()
         
-        # Zone de sortie pour afficher les résultats de l'exécution
+        # Output area to display execution results
         self.output_area = tk.Text(root, height=10, state="disabled", bg="#f0f0f0")
         self.output_area.pack(fill='x')
-        # Événements pour la sélection multiple
+       # Events for multiple selection
        
 
     def new_tab(self, title=None):
@@ -63,20 +63,20 @@ class DrawPPIDE:
             self.new_file_counter += 1 
         """Créer un nouvel onglet avec un éditeur de texte vierge."""
         
-        # Frame de l'onglet
+        # Tab frame
         frame = tk.Frame(self.notebook)
         
-        # Bouton "FERMER" dans l'onglet
+        # “CLOSE” button in the tab
         close_button = tk.Button(frame, text="FERMER", command=lambda: self.close_tab(frame))
         close_button.pack(anchor='ne', padx=5, pady=5)
         
-        # Zone de texte pour l'éditeur
+        # Text box for editor
         text_area = tk.Text(frame, wrap='none', undo=True)
         text_area.pack(fill='both', expand=True, padx=5, pady=(0, 5))
         text_area.bind("<<Modified>>", lambda event, tab=title: self.on_text_modified(tab, text_area))
         
         
-        # Ajouter l'onglet avec le titre et sélectionner le nouvel onglet
+        # Add tab with title and select new tab
         self.notebook.add(frame, text=title)
         self.notebook.select(frame)
         self.modified_tabs[title] = False
@@ -85,22 +85,22 @@ class DrawPPIDE:
         """Marque l'onglet comme modifié si des changements sont détectés."""
         if text_area.edit_modified():
             self.modified_tabs[tab] = True
-            text_area.edit_modified(False)  # Réinitialiser l'indicateur de modification interne de Tkinter
+            text_area.edit_modified(False)  # Reset Tkinter internal edit flag
 
     def close_tab(self, frame):
     
         tab_text = self.notebook.tab(frame, "text")
     
-        # Vérifier si l'onglet a été modifié
+        # Check if the tab has been changed
         if self.modified_tabs.get(tab_text, False):
             save_before_closing = messagebox.askyesnocancel("Enregistrer avant de fermer",
                                                             "Souhaitez-vous enregistrer les modifications de cet onglet ?")
-            if save_before_closing:  # Si l'utilisateur veut enregistrer
+            if save_before_closing:  # If user wants to save
                 self.save_file()
                 self.notebook.forget(frame)
-            elif save_before_closing is None:  # Si l'utilisateur annule
+            elif save_before_closing is None:  # If user cancels
                 return
-            else:  # Si l'utilisateur ne veut pas enregistrer
+            else:  # If user does not want to save
                 self.notebook.forget(frame)
         else:
             self.notebook.forget(frame)
@@ -111,7 +111,7 @@ class DrawPPIDE:
         current_frame = self.notebook.nametowidget(current_tab)
         for widget in current_frame.winfo_children():
             if isinstance(widget, tk.Text):
-                return widget  # Retourne le Text widget dans l'onglet actif
+                return widget  # Return the widget text into the active tab
 
     def open_readme(self):
         readme_path="README.md"
@@ -134,7 +134,7 @@ class DrawPPIDE:
         if file_path:
             with open(file_path, 'w') as file:
                 file.write(text_area.get(1.0, tk.END))
-            self.notebook.tab("current", text=os.path.basename(file_path))  # Met à jour le nom de l'onglet
+            self.notebook.tab("current", text=os.path.basename(file_path))  # Update the tab's name
             self.root.title(f"Draw++ IDE - {file_path}")
             self.modified_tabs[text_area] = False
 
@@ -143,11 +143,11 @@ class DrawPPIDE:
 
     def compile_draw_code(self): 
         """Fonction qui traduit le code Draw++ en C et exécute le fichier C compilé."""
-        # Récupérer le widget texte de l'onglet actif
+        # Get text widget from active tab
         text_area = self.get_current_text_widget()
-        tab_name = self.get_current_tab_name()  # Nom de l'onglet actif
+        tab_name = self.get_current_tab_name()  # Name of active tab
         code = text_area.get(1.0, tk.END)
-        text_area.tag_remove("error", "1.0", tk.END)  # Supprimer les erreurs existantes
+        text_area.tag_remove("error", "1.0", tk.END)  # Remove existing errors
         self.output_area.config(state="normal")
         self.output_area.delete(1.0, tk.END)
         errors = []
@@ -220,7 +220,7 @@ class DrawPPIDE:
             library_source = "src/graphic.c"
             library_object = "src/graphic.o"
             library_output = "lib/libgraphic.a"
-            #compilation bibliothèque graphic
+            #compilation graphic library
             compile_library_command = ["gcc", "-c", library_source, "-o", library_object, "-Iinclude"]
             result_lib = subprocess.run(compile_library_command, capture_output=True, text=True)
             if result_lib.returncode != 0:
@@ -233,7 +233,7 @@ class DrawPPIDE:
                 raise RuntimeError(f"Erreur lors de la création de libgraphic.a : {result_ar.stderr}")
             else:
                 print(f"Bibliothèque libgraphic.a créée avec succès : {result_ar.stdout}")
-            #compilation de l'executable
+            #compiling the executable
             executable_name = f"bin/{tab_name}_executable"  
             compile_command = [
                 "gcc", "-o", executable_name, c_filename, "-Llib", "-lgraphic", "-Iinclude", "-lSDL2"
