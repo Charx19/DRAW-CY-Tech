@@ -1,19 +1,18 @@
 import tkinter as tk
+from lexer2 import Lexer
+from parser2 import Parser
 from tkinter import filedialog, messagebox, ttk
 from instructions import *  # Importer votre répertoire d'instructions
-from compilateur import compile_draw_code_to_c
-from parser import load_grammar_from_bnf, parse_code
+from compilateur import ast_to_c
 import os
 import subprocess
 import math
+import re
 
 class DrawPPIDE:
     def __init__(self, root):
         self.root = root
         self.root.title("Draw++ IDE")
-        
-        # Charger la grammaire
-        self.grammar = load_grammar_from_bnf('src/grammar.bnf')
         self.new_file_counter = 1
         self.modified_tabs = {}
         self.cursor_state = {}
@@ -144,45 +143,70 @@ class DrawPPIDE:
         return self.notebook.tab(self.notebook.select(), "text")
 
     def compile_draw_code(self): 
-        # Fonction qui traduit le code drawpp en C et exécute le fichier C compilé.
+        """Fonction qui traduit le code Draw++ en C et exécute le fichier C compilé."""
+        # Récupérer le widget texte de l'onglet actif
         text_area = self.get_current_text_widget()
-        tab_name = self.get_current_tab_name()  # Récupérer le nom de l'onglet actif
+        tab_name = self.get_current_tab_name()  # Nom de l'onglet actif
         code = text_area.get(1.0, tk.END)
-        text_area.tag_remove("error", "1.0", tk.END)
+        text_area.tag_remove("error", "1.0", tk.END)  # Supprimer les erreurs existantes
         self.output_area.config(state="normal")
         self.output_area.delete(1.0, tk.END)
-        # Vérifier si le fichier est enregistré
-        if tab_name.startswith("New File"):  # Nom temporaire
+        errors = []
+
+        if tab_name.startswith("New File"):  
             self.output_area.insert(tk.END, "Veuillez enregistrer le fichier avant de compiler.\n")
-            self.save_file()  # Ouvre une boîte de dialogue pour enregistrer
+            self.save_file()  
             return
-        # Parse le code en utilisant la grammaire définie
-        instructions, errors = parse_code(code, 'src/grammar.bnf')
+        lexer = Lexer(code)
+        tokens = lexer.get_tokens()
+        for token in tokens:
+            print(token)
+        try:
+            parser = Parser(tokens) 
+            instructions = parser.parse()  
+            if parser.errors:  
+                print("Erreurs de syntaxe détectées :")
+                for error_message in parser.errors:
+                    print(error_message)
+                    match = re.search(r"line (\d+), column (\d+)", error_message)
+                    if match:
+                        line_number = int(match.group(1))
+                        errors.append((line_number, error_message))
+                    else:
+                        errors.append((1, error_message))
+            else:
+                print("Instructions générées par le parser :")
+                print(instructions)
+        except Exception as e:
+            error_message = str(e)
+            print(f"Erreur critique détectée : {error_message}")
+            match = re.search(r"line (\d+), column (\d+)", error_message)
+            if match:
+                line_number = int(match.group(1))
+                errors.append((line_number, error_message))
+            else:
+                errors.append((1, error_message))
 
-        # Gestion des erreurs de syntaxe
-        for line_number, line in errors:
-            start_index = f"{line_number}.0"
-            end_index = f"{line_number}.{len(line)}"
-            text_area.tag_add("error", start_index, end_index)
-            text_area.tag_config("error", background="yellow", foreground="red")
-        
         if errors:
-            self.output_area.insert(tk.END, "Erreur de syntaxe : le problème est ici.\n")
-            self.output_area.config(state="disabled")
-            return
-
-        # Étape 1 : Compilation du code drawpp en C
+            text_area.tag_config("error", background="yellow", foreground="red")
+            for line_number, error_message in errors:
+                start_index = f"{line_number}.0"  
+                end_index = f"{line_number}.end"  
+                text_area.tag_add("error", start_index, end_index)  
+            self.output_area.config(state="normal")  
+            self.output_area.insert(tk.END, "Erreurs de syntaxe détectées :\n")
+            for line_number, error_message in errors:
+                self.output_area.insert(tk.END, f"Ligne {line_number}: {error_message}\n")
+            self.output_area.config(state="disabled")  
+            return  
+        
         try:
             print("Début de la génération du code C...")
-            c_code = compile_draw_code_to_c(code, 'src/grammar.bnf')  # Fonction existante qui retourne le code C
+            c_code = ast_to_c(instructions)
             print("Code C généré avec succès.")
 
-            c_filename = f"src/{tab_name}.c"  # Utiliser le nom de l'onglet pour le fichier C
+            c_filename = f"src/{tab_name}.c"  
             print(f"Nom du fichier C : {c_filename}")
-
-            # Vérification si le code C est valide avant d'écrire dans le fichier
-            print("Code C généré :")
-            print(c_code)  # Affiche le code C pour voir s'il est correct.
 
             with open(c_filename, "w") as c_file:
                 c_file.write(c_code)
@@ -193,10 +217,8 @@ class DrawPPIDE:
             self.output_area.config(state="disabled")
             return
 
-
-        # Étape 2 : Compilation du fichier C en exécutable
         try:
-            executable_name = f"bin/{tab_name}_executable"  # Nommer l'exécutable en fonction de l'onglet
+            executable_name = f"bin/{tab_name}_executable"  
             compile_command = [
                 "gcc", "-o", executable_name, c_filename, "-Llib", "-lgraphic", "-Iinclude", "-lSDL2"
             ]
@@ -210,7 +232,6 @@ class DrawPPIDE:
             self.output_area.config(state="disabled")
             return
 
-        # Étape 3 : Exécution du fichier compilé
         try:
             execution_command = f"./{executable_name}"
             subprocess.run(execution_command, check=True)
