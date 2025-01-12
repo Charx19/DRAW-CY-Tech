@@ -1,222 +1,167 @@
-import ply.lex as lex
-import ply.yacc as yacc
+class Parser:
+    def __init__(self, tokens):
+        self.tokens = tokens
+        self.position = 0
+        self.errors = []  # Liste pour accumuler les erreurs
 
-def load_grammar_from_bnf(filename):
-    grammar_rules = []
-    with open(filename, 'r') as file:
-        for line in file:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            lhs, rhs = line.split("::=")
-            lhs = lhs.strip()
-            rhs = rhs.strip().split("|")
-            for rule in rhs:
-                grammar_rules.append((lhs, rule.strip().split()))
-    return grammar_rules
-
-def parse_code(code, grammar_file):
-    """Parse le code en utilisant une grammaire BNF chargée dynamiquement."""
-    # Charger la grammaire depuis le fichier
-    grammar = load_grammar_from_bnf(grammar_file)
-
-    # Définir les tokens
-    tokens = [
-        'IDENTIFIER', 'NUMBER', 'COLOR', 'MOVE_TO', 'LINE_TO', 'SET_COLOR', 'CIRCLE', 'MOVE_BY', 'IF', 'WHILE', 'EQ', 'NEQ', 'LT', 'GT', 'LEQ', 'GEQ',
-        'LPAREN', 'RPAREN', 'LBRACE', 'RBRACE', 'COMMA', 'ASSIGN', 'CURSOR'
-    ]
-
-    # Règles du lexer
-    def t_CURSOR(t):
-        r'cursor'  # Capture spécifiquement le mot-clé "cursor"
-        print(f"Token CURSOR: {t.value}")  # Log pour le token CURSOR
-        return t
-
-    def t_COLOR(t):
-        r'"(red|blue|green|black|yellow)"'
-        print(f"Token COLOR: {t.value}")  # Log pour le token COLOR
-        return t
-
-    def t_IDENTIFIER(t):
-        r'[a-zA-Z_][a-zA-Z0-9_]*'
-        print(f"Token IDENTIFIER: {t.value}")  # Log pour l'identifiant
-        return t
-    
-    def t_NUMBER(t):
-        r'\d+(\.\d+)?'  # Correspond à un nombre entier ou flottant
-        print(f"Token NUMBER: {t.value}")  # Log pour afficher le token
-        return t
-
-    def t_MOVE_TO(t):
-        r'move_to'
-        print(f"Token MOVE_TO: {t.value}")  # Log pour MOVE_TO
-        return t
-
-    def t_LINE_TO(t):
-        r'line_to'
-        print(f"Token LINE_TO: {t.value}")  # Log pour LINE_TO
-        return t
-
-    def t_SET_COLOR(t):
-        r'set_color'
-        print(f"Token SET_COLOR: {t.value}")  # Log pour SET_COLOR
-        return t
-
-    def t_CIRCLE(t):
-        r'circle'
-        print(f"Token CIRCLE: {t.value}")  # Log pour CIRCLE
-        return t
-
-    def t_MOVE_BY(t):
-        r'move_by'
-        print(f"Token MOVE_BY: {t.value}")  # Log pour MOVE_BY
-        return t
-
-    def t_IF(t):
-        r'if'
-        print(f"Token IF: {t.value}")  # Log pour IF
-        return t
-
-    def t_WHILE(t):
-        r'while'
-        print(f"Token WHILE: {t.value}")  # Log pour WHILE
-        return t
-
-    def t_EQ(t):
-        r'=='
-        print(f"Token EQ: {t.value}")  # Log pour EQ
-        return t
-
-    def t_NEQ(t):
-        r'!='
-        print(f"Token NEQ: {t.value}")  # Log pour NEQ
-        return t
-
-    def t_LT(t):
-        r'<'
-        print(f"Token LT: {t.value}")  # Log pour LT
-        return t
-
-    def t_GT(t):
-        r'>'
-        print(f"Token GT: {t.value}")  # Log pour GT
-        return t
-
-    def t_LEQ(t):
-        r'<='
-        print(f"Token LEQ: {t.value}")  # Log pour LEQ
-        return t
-
-    def t_GEQ(t):
-        r'>='
-        print(f"Token GEQ: {t.value}")  # Log pour GEQ
-        return t
-
-    def t_LPAREN(t):
-        r'\('
-        print(f"Token LPAREN: {t.value}")  # Log pour LPAREN
-        return t
-
-    def t_RPAREN(t):
-        r'\)'
-        print(f"Token RPAREN: {t.value}")  # Log pour RPAREN
-        return t
-
-    def t_LBRACE(t):
-        r'\{'
-        print(f"Token LBRACE: {t.value}")  # Log pour LBRACE
-        return t
-
-    def t_RBRACE(t):
-        r'\}'
-        print(f"Token RBRACE: {t.value}")  # Log pour RBRACE
-        return t
-
-    def t_COMMA(t):
-        r','
-        print(f"Token COMMA: {t.value}")  # Log pour COMMA
-        return t
-
-    def t_ASSIGN(t):
-        r'='
-        print(f"Token ASSIGN: {t.value}")  # Log pour ASSIGN
-        return t
-    # Ignorer les espaces et les tabulations
-    t_ignore = ' \t\n'
-
-    # Fonction d'erreur pour le lexer
-    def t_error(t):
-        print(f"Erreur de token: {t.value}")
-        t.lexer.skip(1)
-
-    # Initialiser le lexer
-    lexer = lex.lex()
-
-    # Définir les règles du parser
-    def p_program(p):
-        """program : instruction"""
-        print(f"Règle appliquée: program")
-        p[0] = p[1]
-
-    def p_instruction_declaration(p):
-        """instruction : declaration"""
-        print(f"Règle appliquée: instruction_declaration")
-        p[0] = ('declaration', p[1])
-
-    def p_instruction_action(p):
-        """instruction : action"""
-        print(f"Règle appliquée: instruction_action")
-        p[0] = ('action', p[1])
-
-    def p_declaration(p):
-        """declaration : IDENTIFIER ASSIGN NUMBER"""
-        print(f"Déclaration de la variable {p[1]} avec la valeur {p[3]}")
-        p[0] = ('declaration', p[1], p[3])
-    def p_cursor(p):
-        """cursor : IDENTIFIER ASSIGN CURSOR COLOR NUMBER COMMA NUMBER"""
-        print(f"Curseur: {p[2]}, X: {p[4]}, Y: {p[6]}")
-        p[0] = ('cursor', p[2], p[4], p[6])
-    def p_action_move_to(p):
-        """action : IDENTIFIER ASSIGN MOVE_TO NUMBER COMMA NUMBER"""
-        print(f"Action: move_to, Identifiant: {p[1]}, X: {p[4]}, Y: {p[6]}")
-        p[0] = ('move_to', p[1], p[4], p[6])
-
-    def p_action_line_to(p):
-        """action : IDENTIFIER ASSIGN LINE_TO NUMBER COMMA NUMBER"""
-        print(f"Action: line_to, Identifiant: {p[1]}, X: {p[4]}, Y: {p[6]}")
-        p[0] = ('line_to', p[1], p[4], p[6])
-
-    def p_action_set_color(p):
-        """action : IDENTIFIER ASSIGN SET_COLOR COLOR"""
-        print(f"Action: set_color, Identifiant: {p[1]}, Couleur: {p[4]}")
-        p[0] = ('set_color', p[1], p[4])
-
-    def p_action_circle(p):
-        """action : IDENTIFIER ASSIGN CIRCLE NUMBER"""
-        print(f"Action: circle, Identifiant: {p[1]}, Rayon: {p[4]}")
-        p[0] = ('circle', p[1], p[4])
-
-    def p_action_move_by(p):
-        """action : IDENTIFIER ASSIGN MOVE_BY NUMBER COMMA NUMBER"""
-        print(f"Action: move_by, Identifiant: {p[1]}, Delta X: {p[4]}, Delta Y: {p[6]}")
-        p[0] = ('move_by', p[1], p[4], p[6])
-
-    def p_error(p):
-        if p:
-            print(f"Erreur de syntaxe: '{p.value}' à la ligne {p.lineno}")
+    def parse(self):
+        return self.program()
+    def peek_token(self, offset):
+        """
+        Regarde un token à une position relative sans le consommer.
+        """
+        peek_position = self.position + offset
+        if peek_position < len(self.tokens):
+            return self.tokens[peek_position]
         else:
-            print("Erreur de syntaxe à la fin du fichier.")
+            return None, None
+        
+    def expression(self):
+        left = self.current_token()
+        if left[0] not in ['IDENTIFIER', 'NUMBER']:
+            line, column = left[2], left[3]
+            raise SyntaxError(f"Unexpected token in expression: {left[0]} at line {line}, column {column}")
+        self.position += 1
 
-    # Créer le parser avec la grammaire chargée
-    parser = yacc.yacc()
+        operator = self.current_token()
+        if operator[0] not in ['GREATER_THAN', 'LOWER_THAN', 'EQUALS']:
+            line, column = operator[2], operator[3]
+            raise SyntaxError(f"Unexpected operator in expression: {operator[0]} at line {line}, column {column}")
+        self.position += 1
 
-    # Analyser le code
-    errors = []
-    try:
-        instructions = parser.parse(code, lexer=lexer)
-    except SyntaxError as e:
-        line_number = e.args[0].split('Ligne')[1].strip().split(',')[0]
-        errors.append((int(line_number), e.args[0]))
-        instructions = None
+        right = self.current_token()
+        if right[0] not in ['IDENTIFIER', 'NUMBER']:
+            line, column = right[2], right[3]
+            raise SyntaxError(f"Unexpected token in expression: {right[0]} at line {line}, column {column}")
+        self.position += 1
 
-    return instructions, errors
+        return ('expression', [left, operator, right])
+    
+    def block(self):
+        instructions = []
+        while self.current_token()[0] not in ['END', 'ELSE', 'ELSE_IF']:
+            instructions.append(self.instruction())
+        return instructions
+    
+    def program(self):
+        instructions = []
+        instructions.append(self.instruction())
+        instructions.append(self.program_rest())
+        return ('program', instructions)
+
+    def program_rest(self):
+        instructions = []
+        while self.current_token()[0] in ['CURSOR', 'MOVE_TO', 'IDENTIFIER', 'MOVE_TO', 'LINE_TO', 'CIRCLE', 'IF']:
+            instructions.append(self.instruction())
+        return ('program_rest', instructions)
+
+    def instruction(self):
+        token = self.current_token()
+        line, column = token[2], token[3]
+        if token[0] == 'CURSOR':  # Si le token est 'CURSOR', analyser comme une déclaration de curseur
+            return self.cursor_stmt()
+        elif token[0] == 'MOVE_TO':  # Si le token est 'MOVE_TO', analyser comme un déplacement
+            return self.move_stmt()
+        elif token[0] == 'IF':
+            return self.if_stmt()
+        elif token[0] == 'IDENTIFIER':  # Si c'est un identifiant, vérifier la nature de l'instruction
+            next_token = self.peek_token(1)  # Regarder le token suivant
+            if not next_token:
+                self.errors.append(f"Unexpected end of input after IDENTIFIER at line {line}, column {column}")
+                return None
+            if next_token[0] == 'EQUALS':  
+                return self.equals_stmt()
+            elif next_token[0] == 'ASSIGN':  # Si le prochain token est '=', c'est une assignation
+                return self.assign_stmt()
+            elif next_token[0] == 'CURSOR':  # Si le prochain token est 'cursor', c'est une déclaration de curseur
+                return self.cursor_stmt()
+            elif next_token[0] == 'MOVE_TO':  # Si le prochain token est 'MOVE_TO', c'est un déplacement
+                return self.move_stmt()
+            elif next_token[0] == 'LINE_TO':  # Si le prochain token est 'LINE_TO', c'est un tracé
+                return self.line_to()
+            elif next_token[0] == 'CIRCLE':  # Si le prochain token est 'CIRCLE', c'est un tracé de cercle
+                return self.circle()
+            else:
+                self.errors.append(f"Unexpected token after IDENTIFIER: {next_token[0]} at line {line}, column {column}")
+                self.position += 1  
+                return None
+        else:
+            self.errors.append(f"Unexpected token: {token[0]} at line {line}, column {column}")
+            self.position += 1  
+            return None
+
+    def cursor_stmt(self):
+        identifier = self.consume('IDENTIFIER')  # Identifier pour la variable
+        self.consume('CURSOR')  # Mot-clé 'cursor'
+        color = self.consume('COLOR')  # Couleur du curseur
+        x = self.consume('NUMBER')  # Coordonnée x
+        y = self.consume('NUMBER')  # Coordonnée y
+        return ('cursor_stmt', [identifier, color, x, y])
+
+    def move_stmt(self):
+        identifier = self.consume('IDENTIFIER')  # Identifier pour la variable
+        self.consume('MOVE_TO')
+        x = self.consume('NUMBER')
+        y = self.consume('NUMBER')
+        return ('move_stmt', [identifier, x, y])
+
+    def line_to(self):
+        identifier = self.consume('IDENTIFIER')  # Identifier pour la variable
+        self.consume('LINE_TO')
+        x = self.consume('NUMBER')
+        y = self.consume('NUMBER')
+        return ('line_to', [identifier, x, y])
+    
+    def circle(self):
+        identifier = self.consume('IDENTIFIER')  # Identifier pour la variable
+        self.consume('CIRCLE')
+        x = self.consume('NUMBER')
+        return ('circle', [identifier, x])
+    
+    def if_stmt(self):
+        self.consume('IF')  # Consommer le token 'IF'
+        condition = self.expression()  # Analyser l'expression conditionnelle
+        self.consume('THEN')  # Consommer le token 'THEN'
+        body = self.block()  # Analyser le bloc d'instructions du corps du 'if'
+        # Assurez-vous que chaque instruction dans le corps est bien sous la forme (node_type, children)
+        body_formatted = []
+        for stmt in body:
+            if isinstance(stmt, tuple):  # Si l'instruction est déjà formatée sous forme de tuple
+                body_formatted.append(stmt)
+            else:
+                # Si l'instruction n'est pas encore formatée, on l'entoure avec un tuple
+                body_formatted.append(('instruction', stmt))
+
+        # Retourner l'AST du 'if_stmt' avec le corps formaté
+        return ('if_stmt', [condition, body])
+    
+    def assign_stmt(self):
+        identifier = self.consume('IDENTIFIER')
+        self.consume('ASSIGN')
+        value = self.consume('NUMBER')
+        return ('assign_stmt', [identifier, value])
+    
+    def equals_stmt(self):
+        identifier = self.consume('IDENTIFIER')
+        self.consume('EQUALS')
+        value = self.consume('NUMBER')
+        return ('equals_stmt', [identifier, value])
+
+    def consume(self, expected_type):
+        token = self.current_token()
+        if token[0] == expected_type:
+            self.position += 1
+            return token[1]
+        else:
+            line, column = token[2], token[3]
+            # Ajouter l'erreur dans la liste, mais ne pas lever une exception
+            self.errors.append(f"Expected {expected_type} but found {token[0]} at line {line}, column {column}")
+            # Passer au prochain token pour éviter une boucle infinie
+            self.position += 1
+            return None
+
+    def current_token(self):
+        if self.position < len(self.tokens):
+            return self.tokens[self.position]
+        else:
+            return None, None
