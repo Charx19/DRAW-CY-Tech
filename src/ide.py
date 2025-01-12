@@ -1,6 +1,6 @@
 import tkinter as tk
-from lexer2 import Lexer
-from parser2 import Parser
+from lexer import Lexer
+from parser import Parser
 from tkinter import filedialog, messagebox, ttk
 from instructions import *  # Importer votre répertoire d'instructions
 from compilateur import ast_to_c
