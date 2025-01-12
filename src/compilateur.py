@@ -1,41 +1,41 @@
 def ast_to_c(ast, declared_vars=None, indent_level=0):
     """
-    Traduire un AST en code C.
+    Translation from AST to C.
 
-    Paramètre:
-    - ast : Un arbre de syntaxe abstraite (AST) représentant le programme.
-    - declared_vars : Un ensemble contenant les noms des variables déjà déclarées.
-    - indent_level : Le niveau d'indentation pour le code généré.
+    Parameters:
+    - ast :  Abstract syntaxical tree to represent the program
+    - declared_vars : All the declared values
+    - indent_level : The indentation for the generated code
 
-    Retourne:
-    - str : Le code C généré.
+    Return:
+    - str : the generated C code
     """
     if declared_vars is None:
-        declared_vars = set()  # Ensemble pour garder trace des variables déjà déclarées
+        declared_vars = set()  # All declared
 
     if not ast:
         print("Ce n'est pas un AST valide")
         return ""
 
-    # Vérification que l'AST est bien un tuple avec 2 éléments
+    # Checking if tuple with at least 2 elements
     if not isinstance(ast, tuple) or len(ast) != 2:
         raise ValueError(f"AST mal formé, doit être un tuple de type (node_type, children), mais reçu : {ast}")
 
-    # Décomposition de l'AST
+    # Decomposing of the AST
     node_type, children = ast
 
-    # Fonction pour ajouter des indentations
+    # Function to add the indentation
     def indent(code, level):
         return "    " * level + code
 
     print(f"Type de nœud : {node_type}, Enfants : {children}")
 
-    # Traitement en fonction du type de nœud
+    # Which node type for each function
     if node_type == 'program':
-        # Pour le programme, nous générons le code de début avec l'inclusion de bibliothèques
+        # For the program, we generate the beginning of the code with our biblio
         code = "#include <stdio.h>\n#include <string.h>\n#include \"graphic.h\"\n\n"  # Ajout des bibliothèques
         
-        # Fonction pour créer un curseur
+        #  Function to create our cursor
         code += "Cursor create_cursor(const char* color, int x, int y) {\n"
         code += "    Cursor c;\n"
         code += "    strcpy(c.color, color);\n"
@@ -44,17 +44,17 @@ def ast_to_c(ast, declared_vars=None, indent_level=0):
         code += "    return c;\n"
         code += "}\n\n"
 
-        # Générer la fonction WinMain
+        # Generate the WinMain function
         code += "int WinMain(int argc, char **argv) {\n"
         code += "    init_graphics();  // Initialisation du système graphique\n"
         code += "    int current_y, current_x;\n"
         code += "    char current_color[20];  \n"
-        # Générer les instructions du programme
+        # Generate the child 
         for child in children:
-            # Appel récursif pour chaque enfant, avec un niveau d'indentation approprié
+            # Recursive function for each child with a new level of indentation
             code += ast_to_c(child, declared_vars, indent_level + 1)
         
-         # Ajout de la boucle principale SDL
+         # Add primairy loop  SDL
         code += indent("SDL_Event event;\n", indent_level + 1)
         code += indent("int running = 1;\n", indent_level + 1)
         code += indent("// Boucle principale\n", indent_level + 1)
@@ -73,7 +73,7 @@ def ast_to_c(ast, declared_vars=None, indent_level=0):
         code += indent("    // Montre les objets sélectionnés si nécessaire\n", indent_level + 2)
         code += indent("}\n", indent_level + 1)
 
-        # Fermeture du système graphique et fin de la fonction WinMain
+        # End of the graphical system and end of WinMain
         code += indent("close_graphics();  // Fermer le système graphique\n", indent_level + 1)
         code += indent("return 0;\n", indent_level + 1)
         code += "}\n"
@@ -86,7 +86,7 @@ def ast_to_c(ast, declared_vars=None, indent_level=0):
         identifier = children[0]
         value = children[1]
 
-        # Si la variable n'est pas encore déclarée, on la déclare en tant qu'int
+        #  If the value isn't declared, we call it 'int'
         if identifier not in declared_vars:
             declared_vars.add(identifier)
             code = indent(f"int {identifier} = {value};\n", indent_level)
@@ -96,7 +96,7 @@ def ast_to_c(ast, declared_vars=None, indent_level=0):
         return code
 
     elif node_type == 'cursor_stmt':
-        # Pour le curseur, nous attendons un identifiant, une couleur, deux coordonnées et une taille
+        #  For the cursor, we are expecting an identificant, color , two coordinates and a size
         if len(children) != 4:
             raise ValueError(f"Nœud de curseur mal formé : {children}")
         identifier = children[0]
