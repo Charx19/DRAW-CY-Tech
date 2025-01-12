@@ -80,7 +80,7 @@ def ast_to_c(ast, declared_vars=None, indent_level=0):
         return code
 
     elif node_type == 'assign_stmt':
-        # Pour les assignations, les enfants doivent être une liste contenant exactement 2 éléments
+        # For assignments, children must be a list containing exactly 2 elements
         if not isinstance(children, list) or len(children) != 2:
             raise ValueError(f"Nœud d'assignation mal formé : {children}")
         identifier = children[0]
@@ -103,7 +103,7 @@ def ast_to_c(ast, declared_vars=None, indent_level=0):
         color = children[1]
         x = children[2]
         y = children[3]
-        # Déclaration de la variable et initialisation avec les arguments passés
+        # Declaration of the variable and initialization with the arguments passed
         code = indent(f"Cursor {identifier} = create_cursor({color}, {x}, {y});\n", indent_level)
         code += indent(f"add_cursor({identifier}.color, {identifier}.x, {identifier}.y);\n", indent_level)
         code += indent(f"cursor({color}, {x}, {y}, 10);\n", indent_level)
@@ -113,13 +113,13 @@ def ast_to_c(ast, declared_vars=None, indent_level=0):
         return code
     
     elif node_type == 'move_stmt':
-        # Pour le mouvement, nous attendons un identifiant et deux coordonnées
+        # For the movement, we expect an identifier and two coordinates
         if len(children) != 3:
             raise ValueError(f"Nœud de mouvement mal formé : {children}")
         identifier = children[0]
         x = children[1]
         y = children[2]
-        # Code pour déplacer le curseur à la nouvelle position
+        # Code to move the cursor to the new position
         code = indent(f"move_to(&{identifier}, {x}, {y});\n", indent_level)
         code += indent(f"current_x = {x};\n", indent_level)
         code += indent(f"current_y = {y};\n", indent_level)
@@ -127,24 +127,24 @@ def ast_to_c(ast, declared_vars=None, indent_level=0):
         return code
     
     elif node_type == 'line_to':
-        # Pour le mouvement, nous attendons un identifiant et deux coordonnées
+        # For the movement, we expect an identifier and two coordinates
         if len(children) != 3:
             raise ValueError(f"Nœud de mouvement mal formé : {children}")
         identifier = children[0]
         x = children[1]
         y = children[2]
-        # Code pour déplacer le curseur à la nouvelle position
+        # Code to move the cursor to the new position
         code = indent(f"line_to({identifier}, {x}, {y});\n", indent_level)
         code+= indent(f"add_line(current_x, current_y, {x}, {y}, current_color);\n", indent_level)
         return code
     
     elif node_type == 'circle':
-        # Pour le mouvement, nous attendons un identifiant et deux coordonnées
+        # For the movement, we expect an identifier and two coordinates
         if len(children) != 2:
             raise ValueError(f"Nœud de mouvement mal formé : {children}")
         identifier = children[0]
         x = children[1]
-        # Code pour déplacer le curseur à la nouvelle position
+        # Code to move the cursor to the new position
         code = indent(f"Object circle_{identifier};\n", indent_level)
         code+= indent(f"circle_{identifier}.type = CIRCLE;\n", indent_level)
         code+= indent(f"circle_{identifier}.radius = {x};\n", indent_level)
@@ -156,45 +156,45 @@ def ast_to_c(ast, declared_vars=None, indent_level=0):
         return code
     
     elif node_type == 'expression':
-        # Gérer les expressions comme a == 8, x > 10, etc.
+        # Handle expressions as a == 8, x > 10, etc.
         if len(children) != 3:
             raise ValueError(f"Nœud 'expression' mal formé : {children}")
         left, operator, right = children
         return f"{left[1]} {operator[1]} {right[1]}"
 
     elif node_type == 'if_stmt':
-        # Traitement pour 'if_stmt'
+        # Processing for 'if_stmt'
         if len(children) != 2:
             raise ValueError(f"Nœud 'if_stmt' mal formé : {children}")
         condition = children[0]
         body = children[1]
         
-        # Code pour la condition
+        # Code for condition
         condition_code = ast_to_c(condition, declared_vars, indent_level)
         
-        # Code pour le corps du 'if'
+        # Code for the body of the 'if'
         body_code = ""
         for stmt in body:
             body_code += ast_to_c(stmt, declared_vars, indent_level + 1)
 
-        # Code pour l'instruction 'if'
+        # Code for the instruction 'if'
         code = indent(f"if ({condition_code}) {{\n", indent_level)
         code += body_code
         code += indent("}\n", indent_level)
         return code
 
     elif node_type == 'body':
-        # Si c'est le corps du `if`, on traite comme une liste d'instructions
+        # If it is the body of the `if`, it is treated as a list of instructions
         code = ""
         for stmt in children:
             code += ast_to_c(stmt, declared_vars, indent_level)
         return code
     
     elif node_type == 'program_rest':
-        # Pour la partie restante du programme (autres instructions)
+        # For the remaining part of the program (further instructions)
         code = ""
         for child in children:
-            # Appel récursif pour chaque enfant, avec un niveau d'indentation approprié
+            # Recursive call for each child, with an appropriate level of indentation
             code += ast_to_c(child, declared_vars, indent_level)
         return code
 
