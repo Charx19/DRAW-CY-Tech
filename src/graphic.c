@@ -3,18 +3,21 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include <stdbool.h>
 #define MAX_OBJECTS 100
 
 // Variables globales pour gérer SDL
 static SDL_Window *window = NULL;
 static SDL_Renderer *renderer = NULL;
-static int current_x = 0, current_y = 0; // Position actuelle du curseur
-
+int current_x = 0, current_y = 0; // Position actuelle du curseur
 
 Object objects[MAX_OBJECTS];
 int object_count = 0;
 Object* dragged_object = NULL;  // L'objet en cours de déplacement
-int offset_x, offset_y;         // Décalage par rapport à la position de la souris au moment du clic
+int offset_x, offset_y;    
+// Déclaration globale
+int is_moving = 0; // Cette variable indiquera si un objet est en mouvement
+int move_speed = 2; // La vitesse de déplacement de l'objet     // Décalage par rapport à la position de la souris au moment du clic
 
 void init_graphics() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -113,11 +116,11 @@ void deselect_all_objects() {
         objects[i].is_selected = 0;
     }
 }
+
 void handle_mouse_selection(SDL_Event* event) {
     static int start_x = 0, start_y = 0;
     static int selecting = 0;
     SDL_Rect selection_rect;
-
     switch (event->type) {
         case SDL_MOUSEBUTTONDOWN:
             if (event->button.button == SDL_BUTTON_LEFT) {
@@ -133,7 +136,6 @@ void handle_mouse_selection(SDL_Event* event) {
                         // Ajouter ici les printf pour vérifier l'offset avant le déplacement
                         printf("Sélection de l'objet : x1=%d, y1=%d, offset_x=%d, offset_y=%d\n", 
                        dragged_object->x1, dragged_object->y1, offset_x, offset_y);
-
                         // Mettre à jour les offsets en fonction du centre du cercle
                         if (dragged_object->type == CIRCLE) {
                             offset_x = event->button.x - dragged_object->x1;
@@ -153,11 +155,15 @@ void handle_mouse_selection(SDL_Event* event) {
                     selecting = 1;
                     deselect_all_objects();
                 }
-            } else if (event->button.button == SDL_BUTTON_RIGHT) {
-                deselect_all_objects();
-                SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-                SDL_RenderClear(renderer);
-                highlight_selected_objects();
+            }// Quand on clique droit
+            else if (event->button.button == SDL_BUTTON_RIGHT) {
+                // Vérifier si un objet est sélectionné
+                for (int i = 0; i < object_count; i++) {
+                    if (objects[i].is_selected) {
+                        // Si un objet est sélectionné, démarrer le mouvement
+                        is_moving = 1; // On lance l'animation
+                    }
+                }
             }
             break;
 
@@ -225,23 +231,38 @@ void handle_mouse_selection(SDL_Event* event) {
                     SDL_RenderClear(renderer);
                     highlight_selected_objects();
                 }
-
                 dragged_object = NULL;
             }
             break;
     }
 }
+void move_to(Cursor* c, int x, int y) {
+    // Trouver l'objet correspondant dans le tableau objects
+    for (int i = 0; i < object_count; i++) {
+        if (objects[i].type == CURSOR && objects[i].x1 == c->x && objects[i].y1 == c->y) {
+            // Mettre à jour la position de l'objet dans le tableau
+            objects[i].x1 = x;
+            objects[i].y1 = y;
 
-void move_to(Cursor c, int x, int y) {
-    // Mettre à jour la position du curseur
-    current_x = x;
-    current_y = y;
+            // Mettre à jour la bounding_box en fonction de la nouvelle position
+            objects[i].bounding_box.x = x - 5;  // Centrer le curseur (5 est la moitié de la taille de 10)
+            objects[i].bounding_box.y = y - 5;
+            objects[i].bounding_box.w = 10;  // Largeur du curseur
+            objects[i].bounding_box.h = 10;  // Hauteur du curseur
+
+            // Mettre à jour également la position du curseur dans son propre champ
+            c->x = x;
+            c->y = y;
+            break;  // Sortir dès qu'on a trouvé l'objet
+        }
+    }
+
     // Redessiner le curseur à la nouvelle position
-    cursor(c.color, current_x, current_y, 10);
+    cursor(c->color, c->x, c->y, 10);
 }
 
+
 void line_to(Cursor c, int x, int y) {
-    // Utiliser la couleur du curseur pour la ligne
     if (strcmp(c.color, "red") == 0) {
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // Rouge
     } else if (strcmp(c.color, "green") == 0) {
@@ -249,19 +270,13 @@ void line_to(Cursor c, int x, int y) {
     } else if (strcmp(c.color, "blue") == 0) {
         SDL_SetRenderDrawColor(renderer, 0, 0, 255, SDL_ALPHA_OPAQUE); // Bleu
     } else {
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE); // Blanc par défaut
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE); // blanc
     }
-
-    // Tracer la ligne de la position actuelle à la nouvelle position
-    SDL_RenderDrawLine(renderer, current_x, current_y, x, y);
+    SDL_RenderDrawLine(renderer, c.x, c.y, x, y);
     SDL_RenderPresent(renderer);
-
-    // Mettre à jour la position actuelle après le dessin de la ligne
     current_x = x;
     current_y = y;
-
-    // Afficher le curseur à la nouvelle position avec la couleur courante
-    cursor(c.color, current_x, current_y, 10); // Afficher le curseur dans la couleur actuelle
+    cursor(c.color, current_x, current_y, 10);
 }
 
 void circle(Object obj) {
@@ -269,7 +284,7 @@ void circle(Object obj) {
     int radius = obj.radius;     // Rayon du cercle
     int x = radius, y = 0;
     int err = 0;
-
+    
     // Définir la couleur de l'objet
     if (strcmp(obj.color, "red") == 0) {
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE);
@@ -299,17 +314,20 @@ void circle(Object obj) {
     SDL_RenderPresent(renderer);
 }
 
-
 void cursor(const char* color, int x, int y, int size) {
     // Effacer l'ancien curseur en dessinant avec la couleur de fond
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE); // Couleur de fond noir
     SDL_Rect clear_rect;
+    printf("Effacement à : %d, %d\n", current_x, current_y); // Debug pour vérifier la position actuelle
     clear_rect.x = current_x - size / 2; // Centrer sur l'ancienne position
     clear_rect.y = current_y - size / 2;
     clear_rect.w = size;
     clear_rect.h = size;
     SDL_RenderFillRect(renderer, &clear_rect);
-
+    printf("Anciennes coordonnées : %d, %d\n", current_x, current_y);
+    // Mettre à jour les coordonnées actuelles
+    current_x = x;
+    current_y = y;
     // Définir la couleur pour le nouveau curseur
     if (strcmp(color, "red") == 0) {
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // Rouge
@@ -320,7 +338,6 @@ void cursor(const char* color, int x, int y, int size) {
     } else {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE); // Blanc par défaut
     }
-
     // Dessiner le nouveau curseur
     SDL_Rect rect;
     rect.x = x - size / 2; // Centrer sur la position (x, y)
@@ -328,22 +345,21 @@ void cursor(const char* color, int x, int y, int size) {
     rect.w = size;
     rect.h = size;
     SDL_RenderFillRect(renderer, &rect);
-
-    // Mettre à jour la position actuelle du curseur
-    current_x = x;
-    current_y = y;
-
+    // Afficher les nouvelles coordonnées pour debug
+    printf("Nouvelles coordonnées : %d, %d\n", current_x, current_y);
     // Rafraîchir l'écran
     SDL_RenderPresent(renderer);
 }
+
+
 void add_cursor(const char* color, int x, int y) {
     if (object_count < MAX_OBJECTS) {
         objects[object_count].type = CURSOR;
         objects[object_count].bounding_box = (SDL_Rect){x - 5, y - 5, 10, 10}; // Définir la taille du curseur
         objects[object_count].is_selected = 0;
         objects[object_count].radius = 0; // Pas de rayon pour le curseur
-        objects[object_count].x2 = 0; // Non utilisé
-        objects[object_count].y2 = 0; // Non utilisé
+        objects[object_count].x1 = x; 
+        objects[object_count].y1 = y; 
         strcpy(objects[object_count].color, color);
         printf("Added cursor: color=%s, x=%d, y=%d\n", color, x, y); // Débogage
         object_count++;
@@ -357,10 +373,6 @@ void add_line(int x1, int y1, int x2, int y2, const char* color) {
         int end_x = (x1 > x2) ? x1 : x2;   // Plus grand des deux
         int end_y = (y1 > y2) ? y1 : y2;   // Plus grand des deux
 
-        // Définir les coordonnées x1, y1 pour la ligne
-        objects[object_count].x1 = x1;  // Ajouter x1
-        objects[object_count].y1 = y1;  // Ajouter y1
-
         // Définir la boîte englobante correctement
         objects[object_count].bounding_box = (SDL_Rect){
             start_x, start_y, abs(x2 - x1), abs(y2 - y1)
@@ -372,8 +384,9 @@ void add_line(int x1, int y1, int x2, int y2, const char* color) {
         objects[object_count].radius = 0; // Pas de rayon pour une ligne
         objects[object_count].x2 = x2;    // Conserver les coordonnées originales
         objects[object_count].y2 = y2;
+        objects[object_count].x1 = x1;  // Ajouter x1
+        objects[object_count].y1 = y1;  // Ajouter y1
         strcpy(objects[object_count].color, color);
-
         // Incrémenter le compteur d'objets
         object_count++;
     }
@@ -385,52 +398,99 @@ void add_circle(int x, int y, int radius, const char* color) {
         objects[object_count].bounding_box = (SDL_Rect){x - radius, y - radius, 2 * radius, 2 * radius}; // Définir la boîte englobante
         objects[object_count].is_selected = 0;
         objects[object_count].radius = radius;
-        objects[object_count].x2 = 0; // Non utilisé
-        objects[object_count].y2 = 0; // Non utilisé
+        objects[object_count].x1 = x; // Non utilisé
+        objects[object_count].y1 = y; // Non utilisé
         strcpy(objects[object_count].color, color);
         printf("Added circle: x=%d, y=%d, radius=%d, color=%s\n", x, y, radius, color); // Débogage
         object_count++;
     }
 }
+void update_moving_objects() {
+    if (is_moving) {
+        for (int i = 0; i < object_count; i++) {
+            if (objects[i].is_selected) {
+                static int move_stage = 0;  // Direction actuelle : 0 droite, 1 bas, 2 gauche, 3 haut
+                static int square_step = 0;  // Étapes dans la direction actuelle
+                static int square_count = 0; // Nombre de carrés complétés
+                const int step_limit = 100;  // Nombre de pas par côté d'un carré
 
+                // Déplacer l'objet selon la direction actuelle
+                switch (move_stage) {
+                    case 0: // Droite
+                        objects[i].x1 += 1;
+                        objects[i].x2 += 1;
+                        objects[i].bounding_box.x += 1;
+                        break;
+                    case 1: // Bas
+                        objects[i].y1 += 1;
+                        objects[i].y2 += 1;
+                        objects[i].bounding_box.y += 1;
+                        break;
+                    case 2: // Gauche
+                        objects[i].x1 -= 1;
+                        objects[i].x2 -= 1;
+                        objects[i].bounding_box.x -= 1;
+                        break;
+                    case 3: // Haut
+                        objects[i].y1 -= 1;
+                        objects[i].y2 -= 1;
+                        objects[i].bounding_box.y -= 1;
+                        break;
+                }
 
-void move_by(Cursor c, int angle, int distance) {
-    // Convertir l'angle en radians
-    double rad = angle * (M_PI / 180.0); // Angle en degrés -> radians
+                // Incrémenter les étapes dans la direction actuelle
+                square_step += 1;
 
-    // Calculer les nouvelles coordonnées du curseur
-    current_x += (int)(distance * cos(rad));
-    current_y += (int)(distance * sin(rad));
-    
-    // Mettre à jour la position du curseur
-    c.x = current_x;
-    c.y = current_y;
-    cursor(c.color, current_x, current_y, 10);
-}
+                // Si on a atteint la limite de pas, changer de direction
+                if (square_step >= step_limit) {
+                    square_step = 0;  // Réinitialiser le compteur d'étapes
+                    move_stage = (move_stage + 1) % 4;  // Passer à la prochaine direction
 
-void line_by(Cursor c, int angle, int distance) {
-    // Utiliser la couleur du curseur pour la ligne
-    if (strcmp(c.color, "red") == 0) {
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE); // Rouge
-    } else if (strcmp(c.color, "green") == 0) {
-        SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE); // Vert
-    } else if (strcmp(c.color, "blue") == 0) {
-        SDL_SetRenderDrawColor(renderer, 0, 0, 255, SDL_ALPHA_OPAQUE); // Bleu
-    } else {
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE); // Blanc par défaut
+                    // Si on a complété un carré complet (toutes les directions)
+                    if (move_stage == 0) {
+                        square_count++;  // Incrémenter le compteur de carrés
+                        printf("Carré %d complété\n", square_count);
+
+                        // Arrêter après 3 carrés
+                        if (square_count >= 3) {
+                            is_moving = 0;  // Fin de l'animation
+                            square_count = 0;  // Réinitialiser pour une prochaine animation
+                            printf("Animation terminée après 3 carrés\n");
+                        }
+                    }
+                }
+            }
+        }
     }
-    // Convertir l'angle en radians
-    double rad = angle * (M_PI / 180.0); // Angle en degrés -> radians
 
-    // Calculer la nouvelle position à atteindre
-    int new_x = current_x + (int)(distance * cos(rad));
-    int new_y = current_y + (int)(distance * sin(rad));
-
-    // Tracer la ligne
-    SDL_RenderDrawLine(renderer, current_x, current_y, new_x, new_y);
-    SDL_RenderPresent(renderer);
-
-    // Mettre à jour la position du curseur
-    current_x = new_x;
-    current_y = new_y;
+    // Effacer l'écran et redessiner
+   SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+   SDL_RenderClear(renderer);
+   highlight_selected_objects();
+   
 }
+
+void handle_key_event(SDL_Event* event) {
+    // Vérifier si la touche pressée est la touche "Supprimer" (ou flèche)
+    if (event->type == SDL_KEYDOWN) {
+        if (event->key.keysym.sym == SDLK_BACKSPACE) {  // Vérifier la touche "backspace"
+            remove_selected_object();  // Supprimer l'objet sélectionné
+        }
+    }
+}
+
+void remove_selected_object() {
+    for (int i = 0; i < object_count; i++) {
+        if (objects[i].is_selected) {
+            // Décaler tous les objets après celui à supprimer vers la gauche
+            for (int j = i; j < object_count - 1; j++) {
+                objects[j] = objects[j + 1];
+            }
+            // Réduire le nombre d'objets
+            object_count--;
+            printf("Objet supprimé\n");
+            break;  // Sortir dès qu'un objet est supprimé
+        }
+    }
+}
+
