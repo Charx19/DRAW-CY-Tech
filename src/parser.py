@@ -2,7 +2,7 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.position = 0
-        self.errors = []  # Liste pour accumuler les erreurs
+        self.errors = []  #  list to accumulate errors
 
     def parse(self):
         return self.program()
@@ -58,28 +58,28 @@ class Parser:
     def instruction(self):
         token = self.current_token()
         line, column = token[2], token[3]
-        if token[0] == 'CURSOR':  # Si le token est 'CURSOR', analyser comme une déclaration de curseur
+        if token[0] == 'CURSOR':  # if token is 'Cursor', analyse as a declaration of a cursor
             return self.cursor_stmt()
-        elif token[0] == 'MOVE_TO':  # Si le token est 'MOVE_TO', analyser comme un déplacement
+        elif token[0] == 'MOVE_TO':  # if token is 'MOVE_TO', analyse like a movement
             return self.move_stmt()
         elif token[0] == 'IF':
             return self.if_stmt()
-        elif token[0] == 'IDENTIFIER':  # Si c'est un identifiant, vérifier la nature de l'instruction
-            next_token = self.peek_token(1)  # Regarder le token suivant
+        elif token[0] == 'IDENTIFIER':  # if it's an identifiant, verify the nature of the instruction
+            next_token = self.peek_token(1)  # check the next token
             if not next_token:
                 self.errors.append(f"Unexpected end of input after IDENTIFIER at line {line}, column {column}")
                 return None
             if next_token[0] == 'EQUALS':  
                 return self.equals_stmt()
-            elif next_token[0] == 'ASSIGN':  # Si le prochain token est '=', c'est une assignation
+            elif next_token[0] == 'ASSIGN':  #  if next token is '=', its a assignation
                 return self.assign_stmt()
-            elif next_token[0] == 'CURSOR':  # Si le prochain token est 'cursor', c'est une déclaration de curseur
+            elif next_token[0] == 'CURSOR':  # if next token is 'CURSOR', its declareted in cursor               
                 return self.cursor_stmt()
-            elif next_token[0] == 'MOVE_TO':  # Si le prochain token est 'MOVE_TO', c'est un déplacement
+            elif next_token[0] == 'MOVE_TO':  # if next token is 'MOVE_TO', it's a movement 
                 return self.move_stmt()
-            elif next_token[0] == 'LINE_TO':  # Si le prochain token est 'LINE_TO', c'est un tracé
+            elif next_token[0] == 'LINE_TO':  # if next token is  'LINE_TO', it's a line
                 return self.line_to()
-            elif next_token[0] == 'CIRCLE':  # Si le prochain token est 'CIRCLE', c'est un tracé de cercle
+            elif next_token[0] == 'CIRCLE':  # if next token is a cercle, then circle
                 return self.circle()
             else:
                 self.errors.append(f"Unexpected token after IDENTIFIER: {next_token[0]} at line {line}, column {column}")
