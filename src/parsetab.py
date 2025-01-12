@@ -6,9 +6,9 @@ _tabversion = '3.10'
 
 _lr_method = 'LALR'
 
-_lr_signature = 'CIRCLE LINE_TO MOVE_TO NEWLINE NUMBER SET_COLOR STRINGinstruction : MOVE_TO NUMBER NUMBERinstruction : LINE_TO NUMBER NUMBERinstruction : SET_COLOR STRINGinstruction : CIRCLE NUMBER'
+_lr_signature = 'ASSIGN CIRCLE COLOR COMMA CURSOR EQ GEQ GT IDENTIFIER IF LBRACE LEQ LINE_TO LPAREN LT MOVE_BY MOVE_TO NEQ NUMBER RBRACE RPAREN SET_COLOR WHILEassign_stmt : IDENTIFIER ASSIGN NUMBERcircle : IDENTIFIER ASSIGN CIRCLE NUMBERcursor : IDENTIFIER CURSOR COLOR NUMBER NUMBERinstruction : circleprogram : instruction program_restprogram_rest : '
     
-_lr_action_items = {'MOVE_TO':([0,],[2,]),'LINE_TO':([0,],[3,]),'SET_COLOR':([0,],[4,]),'CIRCLE':([0,],[5,]),'$end':([1,8,9,10,11,],[0,-3,-4,-1,-2,]),'NUMBER':([2,3,5,6,7,],[6,7,9,10,11,]),'STRING':([4,],[8,]),}
+_lr_action_items = {'IDENTIFIER':([0,],[2,]),'$end':([1,4,],[0,-1,]),'ASSIGN':([2,],[3,]),'NUMBER':([3,],[4,]),}
 
 _lr_action = {}
 for _k, _v in _lr_action_items.items():
@@ -17,7 +17,7 @@ for _k, _v in _lr_action_items.items():
       _lr_action[_x][_k] = _y
 del _lr_action_items
 
-_lr_goto_items = {'instruction':([0,],[1,]),}
+_lr_goto_items = {'assign_stmt':([0,],[1,]),}
 
 _lr_goto = {}
 for _k, _v in _lr_goto_items.items():
@@ -26,9 +26,11 @@ for _k, _v in _lr_goto_items.items():
        _lr_goto[_x][_k] = _y
 del _lr_goto_items
 _lr_productions = [
-  ("S' -> instruction","S'",1,None,None,None),
-  ('instruction -> MOVE_TO NUMBER NUMBER','instruction',3,'p_instruction_move_to','parser.py',8),
-  ('instruction -> LINE_TO NUMBER NUMBER','instruction',3,'p_instruction_line_to','parser.py',12),
-  ('instruction -> SET_COLOR STRING','instruction',2,'p_instruction_set_color','parser.py',16),
-  ('instruction -> CIRCLE NUMBER','instruction',2,'p_instruction_circle','parser.py',20),
+  ("S' -> assign_stmt","S'",1,None,None,None),
+  ('assign_stmt -> IDENTIFIER ASSIGN NUMBER','assign_stmt',3,'p_assign_stmt','parser2.py',3),
+  ('circle -> IDENTIFIER ASSIGN CIRCLE NUMBER','circle',4,'p_circle','parser2.py',3),
+  ('cursor -> IDENTIFIER CURSOR COLOR NUMBER NUMBER','cursor',5,'p_cursor','parser2.py',3),
+  ('instruction -> circle','instruction',1,'p_instruction','parser2.py',3),
+  ('program -> instruction program_rest','program',2,'p_program','parser2.py',3),
+  ('program_rest -> <empty>','program_rest',0,'p_program_rest','parser2.py',3),
 ]
