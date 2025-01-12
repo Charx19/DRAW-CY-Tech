@@ -204,7 +204,7 @@ class DrawPPIDE:
             c_code = ast_to_c(instructions)
             print("Code C généré avec succès.")
 
-            c_filename = f"src/{tab_name}.c"  
+            c_filename = f"{tab_name}.c"  
             print(f"Nom du fichier C : {c_filename}")
 
             with open(c_filename, "w") as c_file:
