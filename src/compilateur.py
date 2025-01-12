@@ -1,164 +1,202 @@
-from parser import parse_code
-def compile_draw_code_to_c(code, grammar):
-    """Analyse et compile le code Draw++ en code C, et retourne le code généré."""
+def ast_to_c(ast, declared_vars=None, indent_level=0):
+    """
+    Traduire un AST en code C.
+
+    Paramètre:
+    - ast : Un arbre de syntaxe abstraite (AST) représentant le programme.
+    - declared_vars : Un ensemble contenant les noms des variables déjà déclarées.
+    - indent_level : Le niveau d'indentation pour le code généré.
+
+    Retourne:
+    - str : Le code C généré.
+    """
+    if declared_vars is None:
+        declared_vars = set()  # Ensemble pour garder trace des variables déjà déclarées
+
+    if not ast:
+        print("Ce n'est pas un AST valide")
+        return ""
+
+    # Vérification que l'AST est bien un tuple avec 2 éléments
+    if not isinstance(ast, tuple) or len(ast) != 2:
+        raise ValueError(f"AST mal formé, doit être un tuple de type (node_type, children), mais reçu : {ast}")
+
+    # Décomposition de l'AST
+    node_type, children = ast
+
+    # Fonction pour ajouter des indentations
+    def indent(code, level):
+        return "    " * level + code
+
+    print(f"Type de nœud : {node_type}, Enfants : {children}")
+
+    # Traitement en fonction du type de nœud
+    if node_type == 'program':
+        # Pour le programme, nous générons le code de début avec l'inclusion de bibliothèques
+        code = "#include <stdio.h>\n#include <string.h>\n#include \"graphic.h\"\n\n"  # Ajout des bibliothèques
+        
+        # Fonction pour créer un curseur
+        code += "Cursor create_cursor(const char* color, int x, int y) {\n"
+        code += "    Cursor c;\n"
+        code += "    strcpy(c.color, color);\n"
+        code += "    c.x = x;\n"
+        code += "    c.y = y;\n"
+        code += "    return c;\n"
+        code += "}\n\n"
+
+        # Générer la fonction WinMain
+        code += "int WinMain(int argc, char **argv) {\n"
+        code += "    init_graphics();  // Initialisation du système graphique\n"
+        code += "    int current_y, current_x;\n"
+        code += "    char current_color[20];  \n"
+        # Générer les instructions du programme
+        for child in children:
+            # Appel récursif pour chaque enfant, avec un niveau d'indentation approprié
+            code += ast_to_c(child, declared_vars, indent_level + 1)
+        
+         # Ajout de la boucle principale SDL
+        code += indent("SDL_Event event;\n", indent_level + 1)
+        code += indent("int running = 1;\n", indent_level + 1)
+        code += indent("// Boucle principale\n", indent_level + 1)
+        code += indent("while (running) {\n", indent_level + 1)
+        code += indent("    // Gestion des événements\n", indent_level + 2)
+        code += indent("    while (SDL_PollEvent(&event)) {\n", indent_level + 2)
+        code += indent("        if (event.type == SDL_QUIT) {\n", indent_level + 3)
+        code += indent("            running = 0;\n", indent_level + 4)
+        code += indent("        }\n", indent_level + 3)
+        code += indent("       handle_mouse_selection(&event);\n", indent_level + 3)
+        code += indent("       handle_key_event(&event);\n", indent_level + 3)
+        code += indent("    }\n", indent_level + 2)
+        code += indent("\n", indent_level + 2)
+        code += indent("       update_moving_objects();\n", indent_level + 2)
+        code += indent("       highlight_selected_objects(&event); // Mettre à jour l'affichage\n", indent_level + 2)
+        code += indent("    // Montre les objets sélectionnés si nécessaire\n", indent_level + 2)
+        code += indent("}\n", indent_level + 1)
+
+        # Fermeture du système graphique et fin de la fonction WinMain
+        code += indent("close_graphics();  // Fermer le système graphique\n", indent_level + 1)
+        code += indent("return 0;\n", indent_level + 1)
+        code += "}\n"
+        return code
+
+    elif node_type == 'assign_stmt':
+        # Pour les assignations, les enfants doivent être une liste contenant exactement 2 éléments
+        if not isinstance(children, list) or len(children) != 2:
+            raise ValueError(f"Nœud d'assignation mal formé : {children}")
+        identifier = children[0]
+        value = children[1]
+
+        # Si la variable n'est pas encore déclarée, on la déclare en tant qu'int
+        if identifier not in declared_vars:
+            declared_vars.add(identifier)
+            code = indent(f"int {identifier} = {value};\n", indent_level)
+        else:
+            code = indent(f"{identifier} = {value};\n", indent_level)
+
+        return code
+
+    elif node_type == 'cursor_stmt':
+        # Pour le curseur, nous attendons un identifiant, une couleur, deux coordonnées et une taille
+        if len(children) != 4:
+            raise ValueError(f"Nœud de curseur mal formé : {children}")
+        identifier = children[0]
+        color = children[1]
+        x = children[2]
+        y = children[3]
+        # Déclaration de la variable et initialisation avec les arguments passés
+        code = indent(f"Cursor {identifier} = create_cursor({color}, {x}, {y});\n", indent_level)
+        code += indent(f"add_cursor({identifier}.color, {identifier}.x, {identifier}.y);\n", indent_level)
+        code += indent(f"cursor({color}, {x}, {y}, 10);\n", indent_level)
+        code += indent(f"current_x = {x};\n", indent_level)
+        code += indent(f"current_y = {y};\n", indent_level)
+        code += indent(f"strcpy(current_color, {color});\n", indent_level)
+        return code
     
-    instructions, errors = parse_code(code, grammar)  # Analyse et récupère les instructions
-
-    if errors:
-        raise ValueError("Des erreurs de syntaxe ont été trouvées. Compilation annulée.")
+    elif node_type == 'move_stmt':
+        # Pour le mouvement, nous attendons un identifiant et deux coordonnées
+        if len(children) != 3:
+            raise ValueError(f"Nœud de mouvement mal formé : {children}")
+        identifier = children[0]
+        x = children[1]
+        y = children[2]
+        # Code pour déplacer le curseur à la nouvelle position
+        code = indent(f"move_to(&{identifier}, {x}, {y});\n", indent_level)
+        code += indent(f"current_x = {x};\n", indent_level)
+        code += indent(f"current_y = {y};\n", indent_level)
+        
+        return code
     
-    # Liste pour stocker le code C généré
-    c_code = [
-        "#include <stdio.h>",
-        "#include <string.h>",
-        "#include \"graphic.h\"",
-        "",
-        "",
-        "// Fonction pour créer un curseur",
-        "Cursor create_cursor(const char* color, int x, int y) {",
-        "    Cursor c;",
-        "    strcpy(c.color, color);",
-        "    c.x = x;",
-        "    c.y = y;",
-        "    return c;",
-        "}",
-        "",
-        "int WinMain(int argc, char **argv) {",
-        "    init_graphics();  // Initialisation du système graphique",
-        "    int current_x, current_y;",
-        "    char current_color[20] = \"\";",
-
-    ]
-    declared_variables = {}
-
-    # Fonction pour gérer l'indentation
-    def indent(level):
-        return '    ' * level
-
-    # Fonction that determines which type is the value
-    def deduce_type(value):
-        try:
-            int(value)  # Test if int
-            return "int"
-        except ValueError:
-            try:
-                float(value)  # Test if float
-                return "float"
-            except ValueError:
-                return None  # if neither, return None
-
-    # Fonction pour générer le code C à partir des instructions
-    def generate_c_code(instructions, indent_level=1):  # Le corps du main commence au niveau 1
-        nonlocal c_code, declared_variables
-
-        for instruction in instructions:
-            command = instruction[0]
-            
-            if command == "move_to":
-                var_name = instruction[1]
-                x, y = instruction[2], instruction[3]
-                c_code.append(f"{indent(indent_level)}move_to({var_name},{x}, {y});")
-            elif command == "line_to":
-                var_name = instruction[1]
-                x, y = instruction[2], instruction[3]
-                # Supposons que vous ayez des variables current_x et current_y qui représentent
-                # les coordonnées actuelles du point de départ de la ligne.
-                c_code.append(f"{indent(indent_level)}line_to({var_name}, {x}, {y});")
-                c_code.append(f"{indent(indent_level)}add_line(current_x, current_y, {x}, {y}, \"{color}\");")
-                c_code.append(f"{indent(indent_level)}current_x = {x};")
-                c_code.append(f"{indent(indent_level)}current_y = {y};")
-            elif command == "line_by":
-                var_name = instruction[1]
-                x, y = instruction[2], instruction[3]
-                c_code.append(f"{indent(indent_level)}line_by({var_name},{x}, {y});")
-                c_code.append(f"{indent(indent_level)}add_line({x}, {y}, {radius}, \"{color}\");")
-            elif command == "move_by":
-                var_name = instruction[1]
-                x, y = instruction[2], instruction[3]
-                c_code.append(f"{indent(indent_level)}move_by({var_name},{x}, {y});")
-            elif command == "set_color":
-                var_name = instruction[1]
-                color = instruction[2]
-                c_code.append(f"{indent(indent_level)}set_color({var_name},\"{color}\");")
-            elif command == "circle":
-                var_name = instruction[1]
-                x = instruction[2]
-                y = instruction[3]
-                radius = instruction[4]
-                color = instruction[5]
-
-                # Créez un objet avec les propriétés du cercle
-                c_code.append(f"{indent(indent_level)}Object circle_{var_name};")
-                c_code.append(f"{indent(indent_level)}circle_{var_name}.type = CIRCLE;")
-                c_code.append(f"{indent(indent_level)}circle_{var_name}.x1 = current_x;")
-                c_code.append(f"{indent(indent_level)}circle_{var_name}.y1 = current_y;")
-                c_code.append(f"{indent(indent_level)}circle_{var_name}.radius = {radius};")
-                c_code.append(f"{indent(indent_level)}strcpy(circle_{var_name}.color, current_color);")
-                c_code.append(f"{indent(indent_level)}add_circle(current_x, current_y, {radius}, current_color);")
-
-                # Appelez la fonction circle avec l'objet
-                c_code.append(f"{indent(indent_level)}circle(circle_{var_name});")
-
-                # Ajoutez le cercle à la liste des objets
-                
-
-            elif command == "cursor":  # Gestion de la commande cursor
-                var_name = instruction[1]
-                color = instruction[2]
-                x = instruction[3]
-                y = instruction[4]
-                # Vérifier si la variable a déjà été déclarée
-                if var_name in declared_variables:
-                    raise ValueError(f"Variable '{var_name}' déjà déclarée.")
-
-                declared_variables[var_name] = "Cursor"
-                c_code.append(f"{indent(indent_level)}Cursor {var_name} = create_cursor(\"{color}\", {x}, {y});")
-                c_code.append(f"{indent(indent_level)}cursor(\"{color}\",{x},{y},10);") 
-                c_code.append(f"{indent(indent_level)}add_cursor(\"{color}\", {x}, {y});")  # Ajout au tableau d'objets
-                c_code.append(f"{indent(indent_level)}current_x = {x};")
-                c_code.append(f"{indent(indent_level)}current_y = {y};")
-                c_code.append(f"{indent(indent_level)}strcpy(current_color, \"{color}\");")
-            elif command == "declare":  # Gestion de l'affectation de variable
-                var_name = instruction[1]
-                value = instruction[2]
-                var_type = deduce_type(value)
-
-                if var_type is None:
-                    raise ValueError(f"Type non reconnu pour la valeur : '{value}'")
-                
-                if var_name in declared_variables:
-                    raise ValueError(f"Variable '{var_name}' déjà déclarée.")
-                
-                declared_variables[var_name] = var_type
-                c_code.append(f"{indent(indent_level)}{var_type} {var_name} = {value};")
-            elif command == "modify":
-                var_name = instruction[1]
-                value = instruction[2]
-
-                if var_name not in declared_variables:
-                    raise ValueError(f"Variable '{var_name}' non déclarée avant modification.")
-                
-                c_code.append(f"{indent(indent_level)}{var_name} = {value};")
-            else:
-                raise ValueError(f"Instruction inconnue : '{command}'")
+    elif node_type == 'line_to':
+        # Pour le mouvement, nous attendons un identifiant et deux coordonnées
+        if len(children) != 3:
+            raise ValueError(f"Nœud de mouvement mal formé : {children}")
+        identifier = children[0]
+        x = children[1]
+        y = children[2]
+        # Code pour déplacer le curseur à la nouvelle position
+        code = indent(f"line_to({identifier}, {x}, {y});\n", indent_level)
+        code+= indent(f"add_line(current_x, current_y, {x}, {y}, current_color);\n", indent_level)
+        return code
     
-    # Générer le code C pour les instructions
-    generate_c_code(instructions)
+    elif node_type == 'circle':
+        # Pour le mouvement, nous attendons un identifiant et deux coordonnées
+        if len(children) != 2:
+            raise ValueError(f"Nœud de mouvement mal formé : {children}")
+        identifier = children[0]
+        x = children[1]
+        # Code pour déplacer le curseur à la nouvelle position
+        code = indent(f"Object circle_{identifier};\n", indent_level)
+        code+= indent(f"circle_{identifier}.type = CIRCLE;\n", indent_level)
+        code+= indent(f"circle_{identifier}.radius = {x};\n", indent_level)
+        code+= indent(f"strcpy(circle_{identifier}.color, current_color);\n", indent_level)
+        code+= indent(f"circle_{identifier}.x1 = current_x;\n", indent_level)
+        code+= indent(f"circle_{identifier}.y1 = current_y;\n", indent_level)
+        code+= indent(f"add_circle(current_x, current_y, {x}, current_color);\n", indent_level)
+        code+= indent(f"circle(circle_{identifier});\n", indent_level)
+        return code
+    
+    elif node_type == 'expression':
+        # Gérer les expressions comme a == 8, x > 10, etc.
+        if len(children) != 3:
+            raise ValueError(f"Nœud 'expression' mal formé : {children}")
+        left, operator, right = children
+        return f"{left[1]} {operator[1]} {right[1]}"
 
-    # Terminer le code C avec la boucle d'événements SDL
-    c_code.append(f"{indent(1)}SDL_Event event;")
-    c_code.append(f"{indent(1)}int running = 1;")
-    c_code.append(f"{indent(1)}while (running) {{")
-    c_code.append(f"{indent(2)}while (SDL_PollEvent(&event)) {{")
-    c_code.append(f"{indent(3)}if (event.type == SDL_QUIT) {{")
-    c_code.append(f"{indent(4)}running = 0;")
-    c_code.append(f"{indent(3)}}}")
-    c_code.append(f"{indent(3)}handle_mouse_selection(&event);")
-    c_code.append(f"{indent(2)}}}")
-    c_code.append(f"{indent(1)}}}")
-    c_code.append(f"{indent(1)}close_graphics();")
-    c_code.append(f"{indent(1)}return 0;")
-    c_code.append("}")
+    elif node_type == 'if_stmt':
+        # Traitement pour 'if_stmt'
+        if len(children) != 2:
+            raise ValueError(f"Nœud 'if_stmt' mal formé : {children}")
+        condition = children[0]
+        body = children[1]
+        
+        # Code pour la condition
+        condition_code = ast_to_c(condition, declared_vars, indent_level)
+        
+        # Code pour le corps du 'if'
+        body_code = ""
+        for stmt in body:
+            body_code += ast_to_c(stmt, declared_vars, indent_level + 1)
 
-    # Retourner le code C généré sous forme de chaîne
-    return "\n".join(c_code)
+        # Code pour l'instruction 'if'
+        code = indent(f"if ({condition_code}) {{\n", indent_level)
+        code += body_code
+        code += indent("}\n", indent_level)
+        return code
+
+    elif node_type == 'body':
+        # Si c'est le corps du `if`, on traite comme une liste d'instructions
+        code = ""
+        for stmt in children:
+            code += ast_to_c(stmt, declared_vars, indent_level)
+        return code
+    
+    elif node_type == 'program_rest':
+        # Pour la partie restante du programme (autres instructions)
+        code = ""
+        for child in children:
+            # Appel récursif pour chaque enfant, avec un niveau d'indentation approprié
+            code += ast_to_c(child, declared_vars, indent_level)
+        return code
+
+    else:
+        raise ValueError(f"Type de nœud non supporté : {node_type}")
